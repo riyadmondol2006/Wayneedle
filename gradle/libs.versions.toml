@@ -27,6 +27,10 @@ androidxTestRunner = "1.7.0"
 androidxTestCore = "1.7.0"
 espresso = "3.7.0"
 uiautomator = "2.4.0"
+# >>> static analysis >>>
+spotless = "8.10.4"            # Gradle plugin; runs ktlint (rules in .editorconfig)
+ktlint = "1.8.0"               # fetched by Spotless at check time
+# <<< static analysis <<<
 
 [libraries]
 # Compose (versions managed by the BOM)
@@ -74,3 +78,6 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 androidx-room = { id = "androidx.room", version.ref = "room" }
+# >>> static analysis >>>
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+# <<< static analysis <<<

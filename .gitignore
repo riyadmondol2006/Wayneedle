@@ -1,18 +1,41 @@
-# Gradle / Android
+# Gradle
 .gradle/
 build/
+
+# Android build output and local configuration
 local.properties
 *.apk
 *.aab
-*.keystore
-*.jks
+*.ap_
+*.dex
+*.hprof
 captures/
 .cxx/
 .externalNativeBuild/
-# IDE / OS
+
+# Signing material must never be committed
+*.keystore
+*.jks
+*.p12
+keystore.properties
+signing.properties
+
+# Kotlin compiler state
+.kotlin/
+
+# IDEs and editors
 .idea/
 *.iml
+.vscode/
+.fleet/
+*.swp
+*~
+
+# Operating system
 .DS_Store
-# Tooling state
+Thumbs.db
+
+# Local tool state
 .claude/
-.kotlin/
+
+# app/schemas/ (Room schema history) is intentionally tracked; do not ignore it.

@@ -1,0 +1,33 @@
+# EditorConfig (https://editorconfig.org). ktlint, run through Spotless, reads the [*.{kt,kts}] section.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{xml,yml,yaml,json,toml,md}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{kt,kts}]
+max_line_length = 120
+# Kotlin official coding conventions (JetBrains' own IDE style), not the stricter ktlint_official style.
+ktlint_code_style = intellij_idea
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# Compose idioms: PascalCase @Composable functions, and star imports only for Compose packages.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+ij_kotlin_packages_to_use_import_on_demand = java.util.*,androidx.compose.**
+# One-parameter-per-line declarations and long Compose signatures are written by hand, not collapsed.
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+
+# TODO: domain/TrackingController.kt has unsorted imports. Delete this override once they are sorted.
+[**/app/wayneedle/domain/TrackingController.kt]
+ktlint_standard_import-ordering = disabled
