@@ -1,0 +1,48 @@
+package app.wayneedle.ui.dashboard
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import app.wayneedle.domain.CommandResult
+import app.wayneedle.ui.permission.rememberLocationAccess
+import app.wayneedle.ui.permission.rememberNotificationRequester
+
+/** Connects [DashboardViewModel] and the platform (permissions, settings screens) to [DashboardScreen]. */
+@Composable
+fun DashboardRoute(
+    onOpenTrip: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val access = rememberLocationAccess(
+        permission = state.permission,
+        providerEnabled = state.gps.providerEnabled,
+        hasGpsHardware = state.hasGpsHardware,
+        onPermissionResult = viewModel::refreshEnvironment,
+    )
+    val requestNotifications = rememberNotificationRequester()
+    val actions = remember(viewModel, access, requestNotifications, onOpenTrip) {
+        DashboardActions(
+            onStart = {
+                if (viewModel.startTrip() is CommandResult.Ok) requestNotifications()
+            },
+            onPause = viewModel::pauseTrip,
+            onResume = { viewModel.resumeTrip() },
+            onRequestFinish = viewModel::requestFinish,
+            onRequestDiscard = viewModel::requestDiscard,
+            onConfirmFinish = viewModel::confirmFinish,
+            onConfirmDiscard = viewModel::confirmDiscard,
+            onDismissDialog = viewModel::dismissDialog,
+            onDone = viewModel::dismissFinished,
+            onViewTrip = onOpenTrip,
+            onRequestPermission = access.requestPermission,
+            onOpenAppSettings = access.openAppSettings,
+            onOpenLocationSettings = access.openLocationSettings,
+        )
+    }
+    DashboardScreen(state = state, gate = access.gate, actions = actions, modifier = modifier)
+}

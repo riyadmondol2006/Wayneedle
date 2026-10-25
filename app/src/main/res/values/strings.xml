@@ -1,4 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Wayneedle</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Speedometer</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Actions -->
+    <string name="action_start">Start</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_finish">Finish</string>
+    <string name="action_saving">Saving…</string>
+    <string name="action_discard">Discard trip</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_done">Done</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_delete_all">Delete all</string>
+    <string name="action_delete_all_trips">Delete all trips</string>
+    <string name="action_delete_trip">Delete this trip</string>
+    <string name="action_delete_trip_from">Delete trip from %1$s</string>
+    <string name="action_not_now">Not now</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_view_details">View details</string>
+    <string name="action_open_trip">Open trip details</string>
+    <string name="action_back">Back</string>
+
+    <!-- Speedometer -->
+    <string name="speedometer_label">Speedometer</string>
+    <string name="spoken_speed_unavailable">No speed available. %1$s</string>
+    <string name="speed_reason_searching">Searching for GPS…</string>
+    <string name="speed_reason_gps_off">Location is off</string>
+    <string name="speed_reason_permission">Location access needed</string>
+    <string name="speed_reason_approximate">Precise location needed</string>
+    <string name="speed_reason_no_gps">No GPS on this device</string>
+    <string name="unit_speed_kmh">km/h</string>
+    <string name="unit_speed_mph">mph</string>
+    <string name="unit_distance_km">km</string>
+    <string name="unit_distance_mi">mi</string>
+
+    <!-- Trip status shown under the dial -->
+    <string name="status_ready">Ready</string>
+    <string name="status_recording">Recording</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_waiting_for_gps">Waiting for GPS…</string>
+    <string name="status_signal_lost">GPS signal lost</string>
+    <string name="status_trip_saved">Trip saved</string>
+
+    <!-- GPS signal indicator -->
+    <string name="gps_quality_none">No signal</string>
+    <string name="gps_quality_poor">Poor signal</string>
+    <string name="gps_quality_fair">Fair signal</string>
+    <string name="gps_quality_good">Good signal</string>
+    <string name="gps_quality_excellent">Excellent signal</string>
+    <string name="gps_off">GPS off</string>
+    <string name="gps_accuracy_m">±%1$s m</string>
+    <string name="gps_accuracy_ft">±%1$s ft</string>
+    <string name="gps_satellites_used_of_view">%1$s of %2$s satellites</string>
+    <string name="spoken_gps_signal">GPS: %1$s</string>
+    <plurals name="gps_satellites_used">
+        <item quantity="one">%1$s satellite</item>
+        <item quantity="other">%1$s satellites</item>
+    </plurals>
+
+    <!-- Trip statistics -->
+    <string name="stat_current">Current</string>
+    <string name="stat_top">Top speed</string>
+    <string name="stat_average">Average</string>
+    <string name="stat_distance">Distance</string>
+    <string name="stat_duration">Duration</string>
+    <string name="spoken_no_value">no value yet</string>
+
+    <!-- Spoken forms for screen readers -->
+    <plurals name="spoken_speed_kmh">
+        <item quantity="one">%1$s kilometre per hour</item>
+        <item quantity="other">%1$s kilometres per hour</item>
+    </plurals>
+    <plurals name="spoken_speed_mph">
+        <item quantity="one">%1$s mile per hour</item>
+        <item quantity="other">%1$s miles per hour</item>
+    </plurals>
+    <plurals name="spoken_distance_km">
+        <item quantity="one">%1$s kilometre</item>
+        <item quantity="other">%1$s kilometres</item>
+    </plurals>
+    <plurals name="spoken_distance_mi">
+        <item quantity="one">%1$s mile</item>
+        <item quantity="other">%1$s miles</item>
+    </plurals>
+    <plurals name="spoken_accuracy_m">
+        <item quantity="one">Accurate to within %1$s metre</item>
+        <item quantity="other">Accurate to within %1$s metres</item>
+    </plurals>
+    <plurals name="spoken_accuracy_ft">
+        <item quantity="one">Accurate to within %1$s foot</item>
+        <item quantity="other">Accurate to within %1$s feet</item>
+    </plurals>
+    <plurals name="spoken_hours">
+        <item quantity="one">%1$s hour</item>
+        <item quantity="other">%1$s hours</item>
+    </plurals>
+    <plurals name="spoken_minutes">
+        <item quantity="one">%1$s minute</item>
+        <item quantity="other">%1$s minutes</item>
+    </plurals>
+    <plurals name="spoken_seconds">
+        <item quantity="one">%1$s second</item>
+        <item quantity="other">%1$s seconds</item>
+    </plurals>
+
+    <!-- Location permission and GPS states -->
+    <string name="gate_no_gps_title">This device has no GPS</string>
+    <string name="gate_no_gps_body">Wayneedle measures speed with a GPS receiver. This device doesn’t have one, so it can’t show your speed or record trips.</string>
+    <string name="gate_rationale_title">Allow precise location</string>
+    <string name="gate_rationale_body">Wayneedle needs your precise location to measure speed and distance from GPS. Your location is used only on this phone and never leaves it.</string>
+    <string name="gate_retry_title">Location access is needed</string>
+    <string name="gate_retry_body">Without precise location Wayneedle can’t measure your speed. Please allow it to continue.</string>
+    <string name="gate_blocked_title">Location access is blocked</string>
+    <string name="gate_blocked_body">Android won’t ask again because location was turned off for Wayneedle. Open app settings, choose Permissions, then Location, and allow precise location.</string>
+    <string name="gate_approximate_title">Precise location is required</string>
+    <string name="gate_approximate_body">Only approximate location was shared, which can’t measure speed. Allow precise location for Wayneedle.</string>
+    <string name="gate_gps_off_title">Location is turned off</string>
+    <string name="gate_gps_off_body">Turn on location in your phone’s settings so Wayneedle can get a GPS fix.</string>
+    <string name="gate_action_allow">Allow location</string>
+    <string name="gate_action_try_again">Try again</string>
+    <string name="gate_action_allow_precise">Allow precise location</string>
+    <string name="gate_action_open_app_settings">Open app settings</string>
+    <string name="gate_action_turn_on_location">Turn on location</string>
+    <string name="gate_banner_gps_off">GPS is off. Speed and distance are not being measured.</string>
+    <string name="gate_banner_permission">Precise location access is missing. Speed and distance are not being measured.</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_finish_title">Finish and save trip?</string>
+    <string name="dialog_finish_body">%1$s %2$s in %3$s will be saved to History.</string>
+    <string name="dialog_finish_body_empty">No distance has been recorded yet. The trip will still be saved.</string>
+    <string name="dialog_discard_title">Discard this trip?</string>
+    <string name="dialog_discard_body">The trip and everything it recorded so far will be permanently deleted. This can’t be undone.</string>
+    <string name="dialog_save_failed_title">Couldn’t save the trip</string>
+    <string name="dialog_save_failed_body">Your trip is safe and still paused. Check that your phone has free storage, then try again.</string>
+    <string name="dialog_delete_trip_title">Delete this trip?</string>
+    <string name="dialog_delete_trip_body">The trip from %1$s will be permanently deleted. This can’t be undone.</string>
+    <string name="dialog_delete_all_title">Delete all trips?</string>
+    <plurals name="dialog_delete_all_body">
+        <item quantity="one">%1$d trip will be permanently deleted. This can’t be undone.</item>
+        <item quantity="other">%1$d trips will be permanently deleted. This can’t be undone.</item>
+    </plurals>
+
+    <!-- Recovered trip and trip summary -->
+    <string name="recovered_title">Recovered trip</string>
+    <string name="recovered_body">Wayneedle was closed while you were recording. Your trip so far (%1$s %2$s in %3$s) was restored. Time while the app was closed isn’t counted.</string>
+    <string name="summary_title">Trip saved</string>
+
+    <!-- History and trip details -->
+    <string name="history_empty_title">No trips yet</string>
+    <string name="history_empty_body">Finish a trip and it will show up here. Everything stays on your phone.</string>
+    <string name="history_trip_meta">%1$s · Top %2$s %4$s · Avg %3$s %4$s</string>
+    <string name="day_today">Today</string>
+    <string name="day_yesterday">Yesterday</string>
+    <string name="spoken_trip_summary">%1$s. %2$s in %3$s. Top speed %4$s, average speed %5$s.</string>
+    <string name="trip_detail_title">Trip details</string>
+    <string name="trip_not_found_title">Trip not found</string>
+    <string name="trip_not_found_body">This trip no longer exists. It may have been deleted.</string>
+    <string name="detail_started">Started</string>
+    <string name="detail_finished">Finished</string>
+
+    <!-- Settings -->
+    <string name="settings_units">Units</string>
+    <string name="settings_units_explanation">Speed and distance always use the same system: kilometres with km/h, or miles with mph.</string>
+    <string name="settings_unit_kmh">km/h</string>
+    <string name="settings_unit_mph">mph</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Dynamic colour</string>
+    <string name="settings_dynamic_color_summary">Use colours from your wallpaper (Material You).</string>
+    <string name="settings_dynamic_color_unsupported">Needs Android 12 or newer.</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_screen_on_summary">Stops the screen from turning off while Wayneedle is open.</string>
+    <string name="settings_data">Your data</string>
+    <plurals name="settings_trip_count">
+        <item quantity="one">%1$d trip saved on this phone.</item>
+        <item quantity="other">%1$d trips saved on this phone.</item>
+    </plurals>
+    <string name="settings_about">About</string>
+    <string name="settings_about_name_version">%1$s %2$s</string>
+    <string name="settings_about_license">Open source under the Apache License 2.0.</string>
+    <string name="settings_about_offline">100 % offline – no internet permission, no accounts, no analytics.</string>
 </resources>
