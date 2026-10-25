@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single-colour version of the Wayneedle mark for themed (monochrome) launcher icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M34.91,73.09 A27,27 0 1 1 73.09,73.09"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.4"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M34.91,73.09 A27,27 0 0 1 68.47,31.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M40.21,67.79 L38.3,69.7 M34.5,54 L31.8,54 M40.21,40.21 L38.3,38.3 M54,34.5 L54,31.8 M67.79,40.21 L69.7,38.3 M73.5,54 L76.2,54 M67.79,67.79 L69.7,69.7"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.7"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58.06,53.02 L67.82,33.16 L66.97,32.62 L53.16,49.91 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49.6,54 a4.4,4.4 0 1 0 8.8,0 a4.4,4.4 0 1 0 -8.8,0 Z" />
+</vector>
