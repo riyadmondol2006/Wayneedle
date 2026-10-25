@@ -22,8 +22,10 @@ for what has and has not been checked.
   notification with Pause/Resume actions.
 * **Crash and process-death recovery**: an interrupted trip comes back paused; the time the app was not running is
   never counted.
-* **Material 3 Expressive** interface with dynamic (Material You) colour on Android 12+, light and dark themes,
-  and an optional keep-screen-on setting.
+* **Material 3 Expressive-inspired** interface (spring motion, shape-morphing buttons, large rounded shapes) with
+  dynamic (Material You) colour on Android 12+, light and dark themes, and an optional keep-screen-on setting.
+  It is built on stable Material 3 1.4.0, where the official Expressive components are not public; see
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#material-3-expressive).
 
 ## Screenshots
 
@@ -69,7 +71,7 @@ tells you that it cannot measure speed.
 | Kotlin | 2.4.21 (the Compose compiler plugin uses the same version) |
 | KSP | 2.3.12 |
 | Compose BOM | 2026.09.00 |
-| Material 3 | 1.4.0 (Expressive APIs behind documented opt-ins) |
+| Material 3 | 1.4.0 (stable; Expressive components are public only in 1.5 pre-releases) |
 | Room | 2.8.5 |
 | DataStore | 1.3.0 |
 | Kotlin coroutines | 1.11.0 |

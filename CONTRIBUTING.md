@@ -48,8 +48,8 @@ the build with a file and line.
   imports (except `tracking/platform`), the UI and the service talk to `TrackingController` and never to
   `tracking` internals, and only `AndroidLocationSource` touches `LocationManager`.
 * Compose conventions apply: composable functions are PascalCase, take a `modifier` parameter, and long parameter
-  lists are fine. Experimental Material 3 Expressive APIs are opted into at the use site, only in `ui/theme` and
-  `ui/components`, never module-wide.
+  lists are fine. Pre-release Material 3 artifacts are not used; the Expressive look is built from stable parts in
+  `ui/theme` and `ui/components` (see `docs/ARCHITECTURE.md`).
 
 ## Running the checks
 

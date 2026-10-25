@@ -83,10 +83,19 @@ Room (`data/db`) with exported schemas in `app/schemas/`; DataStore Preferences 
 
 ## Material 3 Expressive
 
-Stable Material 3 **1.4.0** ships `MaterialExpressiveTheme`, `MotionScheme.expressive()` and Expressive
-components behind `@ExperimentalMaterial3ExpressiveApi`. No pre-release artifacts are used. Opt-ins are
-confined to `ui/theme` and `ui/components` with `@OptIn` at each site (never a module-wide compiler opt-in),
-so experimental surface stays small and documented.
+In the stable Material 3 **1.4.0** artifact the Expressive API is not usable: `ExperimentalMaterial3ExpressiveApi`,
+`MaterialExpressiveTheme`, `MotionScheme` and `MaterialTheme.motionScheme` are `internal` (the compiler rejects
+them), and `ButtonGroup`, `ToggleButton`, `SplitButton`, `LoadingIndicator`, `FloatingToolbar`, `MaterialShapes`
+and `ButtonDefaults.shapes()` are absent. They first become public in the 1.5 pre-releases, which the project
+rules exclude.
+
+The UI is therefore *Expressive-inspired* and built from stable parts: `ui/theme` provides a hand-crafted brand
+palette with Material You dynamic colour, large expressive shapes and heavier type, and `WayneedleMotion`
+reproduces the Expressive spring tokens (spatial 0.8/380, fast spatial 0.6/800, effects 1.0/1600) and collapses
+to `snap()` when animations are disabled. `ui/components` holds the shape-morphing button, button row and
+needle loading indicator. `ShortNavigationBar` (stable) is used for navigation. There are no Expressive opt-ins;
+the only `@OptIn` is `ExperimentalMaterial3Api` for the top app bar, confined to `ui/components/TitleScaffold.kt`.
+Moving to the library implementation when Material 3 1.5 is stable is a contained change in those two packages.
 
 ## Testing
 
