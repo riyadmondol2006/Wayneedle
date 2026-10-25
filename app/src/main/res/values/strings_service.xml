@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channel (visible in system settings) -->
+    <string name="service_channel_name">Trip recording</string>
+    <string name="service_channel_description">Shown while a trip is being recorded so Wayneedle can keep measuring your speed with the screen off.</string>
+
+    <!-- Notification titles -->
+    <string name="service_title_app">Wayneedle</string>
+    <string name="service_title_recording">Wayneedle – Recording</string>
+    <string name="service_title_paused">Wayneedle – Paused</string>
+
+    <!-- Notification text. Placeholders are positional so translators may reorder them. -->
+    <string name="service_text_starting">Starting…</string>
+    <string name="service_text_waiting_for_gps">Waiting for GPS…</string>
+    <string name="service_text_gps_off">GPS is off</string>
+    <string name="service_text_permission_needed">Location permission needed</string>
+    <string name="service_text_recording">%1$s · %2$s · %3$s</string>
+    <string name="service_text_paused">%1$s · %2$s</string>
+
+    <!-- Unit formats; %1$s is an already localised number -->
+    <string name="service_speed_kmh">%1$s km/h</string>
+    <string name="service_speed_mph">%1$s mph</string>
+    <string name="service_distance_km">%1$s km</string>
+    <string name="service_distance_mi">%1$s mi</string>
+
+    <!-- Notification actions -->
+    <string name="service_action_pause">Pause</string>
+    <string name="service_action_resume">Resume</string>
+</resources>
