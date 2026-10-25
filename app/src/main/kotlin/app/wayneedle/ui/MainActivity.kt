@@ -15,8 +15,9 @@ import app.wayneedle.domain.TrackingController
  * re-read permission and GPS state whenever the app returns to the foreground.
  */
 class MainActivity : ComponentActivity() {
-    private val trackingController: TrackingController
-        get() = (application as WayneedleApplication).container.trackingController
+    private val trackingController: TrackingController by lazy {
+        (application as WayneedleApplication).container.trackingController
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
