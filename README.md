@@ -134,9 +134,16 @@ This section is only updated with results that are recorded in [docs/TESTING.md]
 
 * Verified by the commands above on a development machine: the debug sources compile with warnings as errors, the
   JVM tests pass, Android Lint and the ktlint check pass.
-* **Not yet verified on a device**: GPS behaviour, accuracy, the foreground service over long trips, battery use,
-  and Android 17 specifics. Until a result appears in the device log in `docs/TESTING.md`, treat device behaviour
-  as untested.
+* Verified on a Google Pixel 6 Pro (Android 17, API 37.1) on 2026-10-26: the 86 instrumentation tests pass, and the
+  app was exercised by hand (permission flow, dashboard in every state, History, Settings). These runs fed the
+  real Android location stack with **scripted fixes**, not satellite measurements. They show that live speed, trip
+  statistics, pause/resume accounting, the foreground service (GPS keeps flowing after the activity closes) and the
+  notification actions behave correctly. They found and fixed a process crash when the service was stopped before
+  it had gone foreground.
+* **Not yet verified**: speed and distance accuracy with real satellites outdoors, tunnels and tree cover, long
+  trips, behaviour under Doze with the screen off, process-death recovery on a device, battery use, and the
+  notification being swipe-dismissed on Android 17. Until a result appears in the device log in
+  [docs/TESTING.md](docs/TESTING.md), treat those as untested.
 * No other device models, Android versions or emulators have been tested.
 
 ## Project structure

@@ -129,9 +129,10 @@ other phones may be attached to the same machine.
 
 Both scripts are in `scripts/`. They are plain Bash and need `adb` on the `PATH` (or `ADB=/path/to/adb`).
 
-`scripts/verify-pixel-6-pro.sh` lists attached devices (`adb devices -l`) and, for each device in the `device`
-state that is not an `emulator-*` entry, reads `ro.product.manufacturer`, `ro.product.device` and
-`ro.product.model`, stopping at the first mismatch. Nothing else is ever run on a device that does not match.
+`scripts/verify-pixel-6-pro.sh` lists attached devices (`adb devices -l`). A device becomes a candidate only if it is
+in the `device` state, is not an `emulator-*` entry, and its listing row says `device:raven`; every other device is
+skipped without a single command being sent to it. For each candidate it reads `ro.product.manufacturer`,
+`ro.product.device` and `ro.product.model`, stopping at the first mismatch.
 It prints one line, `<serial><TAB><Android release><TAB><SDK level>`, for the verified device, and exits:
 
 | Exit code | Meaning |
@@ -162,10 +163,45 @@ scripts/run-on-pixel-6-pro.sh logcat -d
 scripts/run-on-pixel-6-pro.sh shell dumpsys location
 ```
 
-The scripts have been checked with `bash -n` and ShellCheck. They have not been executed in the course of writing
-them, so the first real run on the device is also their first test: run `scripts/verify-pixel-6-pro.sh` alone first
-and confirm that it prints the expected line. For Gradle tasks, safety rests on the Android Gradle Plugin honouring
-`ANDROID_SERIAL`; if there is any doubt, unplug the other phones before running a `connected*` task.
+The scripts have been checked with `bash -n` and ShellCheck. `verify-pixel-6-pro.sh` has been run against a real
+Pixel 6 Pro with a second, different Pixel attached and correctly reported only the Pro. `run-on-pixel-6-pro.sh`
+has **not** been executed yet: the 2026-10-26 device run below used `adb -s <verified serial>` directly. Run the
+verifier alone first and confirm that it prints the expected line. For Gradle tasks, safety rests on the Android
+Gradle Plugin honouring `ANDROID_SERIAL`; with other phones attached prefer `am instrument` through the `shell`
+subcommand (below), which names the device explicitly, or unplug the other phones before a `connected*` task.
+
+### Running the instrumentation tests
+
+The suite lives in `app/src/androidTest` (86 tests: Room DAOs and migrations, the notification, every UI screen and
+the end-to-end location tests). With another phone attached, run it with an explicit serial instead of
+`connectedDebugAndroidTest`:
+
+```sh
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+scripts/run-on-pixel-6-pro.sh install -r -t app/build/outputs/apk/debug/app-debug.apk
+scripts/run-on-pixel-6-pro.sh install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+scripts/run-on-pixel-6-pro.sh shell am instrument -w -r app.wayneedle.debug.test/androidx.test.runner.AndroidJUnitRunner
+# one class: add  -e class app.wayneedle.tracking.GpsPipelineInstrumentedTest
+```
+
+Things the suite needs, all learned on the device:
+
+* **Screen on and unlocked.** Compose tests need a resumed activity; with the display off they fail with "No
+  compose hierarchies found". Keep it awake while plugged in (`svc power stayon true`, undone with
+  `svc power stayon false`) and dismiss the keyguard (`wm dismiss-keyguard`). A dialog from another app on top of
+  the test activity has the same effect.
+* **Mock location for the end-to-end tests.** `GpsPipelineInstrumentedTest` and `TrackingServiceEndToEndTest`
+  inject scripted fixes with speed through the platform's test provider. They are *skipped* unless the debug app
+  has the app-op: `shell appops set app.wayneedle.debug android:mock_location allow`, and afterwards
+  `... default`. The `adb shell cmd location providers` commands cannot be used instead: they are denied for the
+  shell user and cannot set a speed anyway.
+* **A visible app.** "While using the app" location is only delivered while the app is visible, which is why those
+  tests keep a resumed activity (the service test then closes it to prove the foreground service keeps GPS alive).
+* **Locale.** Numbers are formatted for the device locale (a phone set to `en-PT` prints `0,12 km`). Tests must
+  not hard-code a decimal separator; use `localizedDecimal(...)` from `UiTestUtils`.
+* **The fixes are scripted, not satellite measurements.** These tests prove the pipeline (Android location stack,
+  adapter, filter, trip engine, Room, foreground service, notification) behaves correctly. They say nothing about
+  real-world GPS accuracy; that needs the field checklist below.
 
 ### Procedure for a device run
 
@@ -197,6 +233,17 @@ These scenarios need real GPS and cannot be judged on the JVM. Each is run on th
   (`scripts/run-on-pixel-6-pro.sh shell dumpsys location`).
 * **UI**: rotation, light and dark themes, dynamic colour on and off, large font scale, km/h and mph.
 
+### Checklist status (2026-10-26)
+
+Covered by the automated device run above (with scripted fixes): pause/resume accounting, first fix after resume
+only anchoring, GPS listener released when the app is hidden and no trip runs, Pause/Resume from the notification,
+the trip surviving the activity being closed because of the foreground service, finish stopping the service.
+
+**Not done yet, and needing a person with the phone outdoors**: everything that depends on real satellites
+(standing still, a measured walk, drive or cycle, tunnels), "screen off for 10 minutes" under Doze, process death
+recovery (`kill`), Task Manager "Stop", swipe-dismissing the notification on Android 17, permission revocation
+mid-trip, and GPS switched off mid-trip. Nothing in this project claims those have been verified.
+
 ## Device log
 
 Append a row for every device run. Record the commit, the scenario and the outcome, including failures. Do not
@@ -204,7 +251,8 @@ record device serial numbers, coordinates or GPS tracks.
 
 | Date | Commit | Device and Android build | Suite or scenario | Result | Notes |
 |---|---|---|---|---|---|
-| | | | | | No device runs have been recorded yet. |
+| 2026-10-26 | adb4420 | Pixel 6 Pro, Android 17 (API 37.1), build CP3A.261005.002.A1, locale en-PT | Full instrumentation suite (`am instrument`), 86 tests | Pass (86/86) | Indoors, no satellite fix. Location was mock-driven; see "Running the instrumentation tests". |
+| 2026-10-26 | adb4420 | same | Manual: first launch, permission flow, idle/running/paused/finished dashboard, History, Settings, delete-all, with mock-driven fixes | Pass | Visual check by screenshot. Real GNSS status was live ("0 of 4 satellites") but no fix indoors. |
 
 ## Continuous integration
 
