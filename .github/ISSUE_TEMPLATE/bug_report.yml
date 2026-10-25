@@ -1,0 +1,56 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please do not attach GPS tracks or screenshots that reveal where you live or work.
+        Security problems go through the private process in SECURITY.md, not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you see instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app and grant precise location
+        2. Start a trip
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Google Pixel 6 Pro, Android 17
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Wayneedle version or commit
+      placeholder: 0.1.0, or a commit hash
+    validations:
+      required: true
+  - type: dropdown
+    id: location-permission
+    attributes:
+      label: Location permission granted
+      options:
+        - Precise
+        - Approximate only
+        - Denied
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Where you were (open sky, city, tunnel), how you moved, and whether the screen was off.

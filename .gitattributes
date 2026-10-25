@@ -1,0 +1,11 @@
+# Normalise line endings so checksums (LICENSE, Gradle wrapper) and the formatter behave the same everywhere.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.ttf binary
+*.otf binary
+*.keystore binary
