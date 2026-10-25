@@ -1,13 +1,18 @@
 package app.wayneedle.ui.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -43,7 +48,11 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
 ) {
     val formatter = rememberUiFormatter()
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+    ) {
         if (maxWidth >= WIDE_LAYOUT_MIN_WIDTH_DP.dp && maxWidth > maxHeight) {
             WideDashboard(state, gate, actions, formatter, maxWidth, maxHeight)
         } else {
@@ -73,16 +82,17 @@ private fun CompactDashboard(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = ScreenPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth())
-            DashboardGauge(state, Modifier.width(gaugeWidth))
+            DashboardGauge(state.gauge, state.trip.phase, state.trip.awaitingFix, Modifier.width(gaugeWidth))
             DashboardPanel(state, gate, actions, formatter, Modifier.fillMaxWidth())
         }
-        if (showsPinnedControls(state, gate)) {
+        if (showsPinnedControls(state.trip.phase, state.trip.recovered, gate)) {
             TripControls(
-                state = state,
+                phase = state.trip.phase,
+                isFinishing = state.isFinishing,
                 gate = gate,
                 actions = actions,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = ScreenPadding, vertical = 12.dp),
@@ -112,24 +122,24 @@ private fun WideDashboard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth())
-            DashboardGauge(state, Modifier.width(gaugeWidth))
+            DashboardGauge(state.gauge, state.trip.phase, state.trip.awaitingFix, Modifier.width(gaugeWidth))
         }
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
             DashboardPanel(state, gate, actions, formatter, Modifier.fillMaxWidth())
-            if (showsPinnedControls(state, gate)) {
-                TripControls(state, gate, actions, Modifier.fillMaxWidth())
+            if (showsPinnedControls(state.trip.phase, state.trip.recovered, gate)) {
+                TripControls(state.trip.phase, state.isFinishing, gate, actions, Modifier.fillMaxWidth())
             }
         }
     }
 }
 
 /** Whether the trip controls are shown (pinned to the bottom on compact screens). */
-internal fun showsPinnedControls(state: DashboardUiState, gate: LocationGate): Boolean = when (state.trip.phase) {
+internal fun showsPinnedControls(phase: TripPhase, recovered: Boolean, gate: LocationGate): Boolean = when (phase) {
     TripPhase.IDLE -> gate == LocationGate.Ready
     TripPhase.RUNNING -> true
-    TripPhase.PAUSED -> !state.trip.recovered
+    TripPhase.PAUSED -> !recovered
     TripPhase.FINISHED -> false
 }

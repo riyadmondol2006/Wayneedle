@@ -18,6 +18,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import app.wayneedle.ui.theme.tabular
 
+/** The bigger value type shrinks once the text would no longer fit a half-width tile. */
+private const val LARGE_MAX_LENGTH = 8
+private const val MEDIUM_MAX_LENGTH = 10
+private const val DIMMED_ALPHA = 0.6f
+
 /**
  * A labelled number with an optional unit. Reads as one phrase to TalkBack ("Distance, 12.34 kilometres").
  *
@@ -35,7 +40,14 @@ fun StatTile(
     large: Boolean = false,
     dimmed: Boolean = false,
 ) {
-    val valueStyle = if (large) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.titleLarge
+    val typography = MaterialTheme.typography
+    val textLength = value.length + (unit?.length?.plus(1) ?: 0)
+    val valueStyle = when {
+        !large -> typography.titleLarge
+        textLength <= LARGE_MAX_LENGTH -> typography.headlineLarge
+        textLength <= MEDIUM_MAX_LENGTH -> typography.headlineMedium
+        else -> typography.headlineSmall
+    }
     val unitStyle = if (large) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge
     val unitColor = MaterialTheme.colorScheme.onSurfaceVariant
     val valueText = buildAnnotatedString {
@@ -52,9 +64,7 @@ fun StatTile(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).alpha(if (dimmed) 0.6f else 1f),
-        ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
@@ -69,6 +79,7 @@ fun StatTile(
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.alpha(if (dimmed) DIMMED_ALPHA else 1f),
             )
         }
     }

@@ -46,7 +46,7 @@
     <string name="status_paused">Paused</string>
     <string name="status_waiting_for_gps">Waiting for GPS…</string>
     <string name="status_signal_lost">GPS signal lost</string>
-    <string name="status_trip_saved">Trip saved</string>
+    <string name="status_finished">Finished</string>
 
     <!-- GPS signal indicator -->
     <string name="gps_quality_none">No signal</string>
@@ -189,5 +189,5 @@
     <string name="settings_about">About</string>
     <string name="settings_about_name_version">%1$s %2$s</string>
     <string name="settings_about_license">Open source under the Apache License 2.0.</string>
-    <string name="settings_about_offline">100 % offline – no internet permission, no accounts, no analytics.</string>
+    <string name="settings_about_offline" formatted="false">100 % offline – no internet permission, no accounts, no analytics.</string>
 </resources>

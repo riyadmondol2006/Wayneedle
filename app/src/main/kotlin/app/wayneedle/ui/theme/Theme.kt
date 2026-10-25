@@ -27,7 +27,7 @@ val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSIO
  *
  * Experimental API note: `MaterialExpressiveTheme` is `internal` in material3 1.4.0 stable (it is public
  * only in 1.5 pre-releases), so this uses the stable `MaterialTheme` and supplies the expressive shapes,
- * typography and motion itself. No `@OptIn` is needed anywhere in the app.
+ * typography and motion itself. No Expressive `@OptIn` is needed anywhere in the app.
  */
 @Composable
 fun WayneedleTheme(

@@ -91,10 +91,10 @@ private const val MAJOR_TICK = 0.04f
 private const val MINOR_TICK = 0.022f
 private const val LABEL_GAP = 0.034f
 private const val NEEDLE_BASE_RADIUS = 0.27f
-private const val NEEDLE_BASE_HALF_WIDTH = 0.014f
-private const val NEEDLE_TIP_HALF_WIDTH = 0.0025f
+private const val NEEDLE_BASE_HALF_WIDTH = 0.019f
+private const val NEEDLE_TIP_HALF_WIDTH = 0.003f
 private const val DIGITS_SIZE = 0.26f
-private const val STATUS_TOP = 0.745f
+private const val STATUS_TOP = 0.775f
 private const val UNAVAILABLE_ALPHA = 0.35f
 private const val LABEL_FONT = 0.034f
 
@@ -199,6 +199,7 @@ fun Speedometer(
                 Canvas(Modifier.fillMaxSize()) {
                     drawNeedleLayer(
                         fraction = needle.value,
+                        scale = scale,
                         arcColor = arcColor,
                         needleColor = needleColor,
                         haloColor = needleHalo,
@@ -408,8 +409,27 @@ private fun DrawScope.drawScale(
     }
 }
 
+/** Re-draws the ticks the needle has passed in the accent colour, so the scale lights up behind the needle. */
+private fun DrawScope.drawLitTicks(scale: GaugeScale, fraction: Float, tickOuter: Float, color: Color) {
+    val w = size.width
+    var value = 0
+    while (value <= scale.max && value <= fraction * scale.max) {
+        val major = value % scale.majorStep == 0
+        val angle = angleFor(scale, value)
+        drawLine(
+            color = color,
+            start = pointOnDial(angle, tickOuter),
+            end = pointOnDial(angle, tickOuter - w * (if (major) MAJOR_TICK else MINOR_TICK)),
+            strokeWidth = w * (if (major) 0.0075f else 0.004f),
+            cap = StrokeCap.Round,
+        )
+        value += scale.minorStep
+    }
+}
+
 private fun DrawScope.drawNeedleLayer(
     fraction: Float,
+    scale: GaugeScale,
     arcColor: Color,
     needleColor: Color,
     haloColor: Color,
@@ -444,6 +464,7 @@ private fun DrawScope.drawNeedleLayer(
     }
 
     val tipRadius = w * OUTER_RADIUS - arcStroke - w * TICK_GAP
+    if (showArc) drawLitTicks(scale, clamped, tipRadius, arcColor.copy(alpha = alpha))
     val baseRadius = w * NEEDLE_BASE_RADIUS
     val baseHalf = w * NEEDLE_BASE_HALF_WIDTH
     val tipHalf = w * NEEDLE_TIP_HALF_WIDTH

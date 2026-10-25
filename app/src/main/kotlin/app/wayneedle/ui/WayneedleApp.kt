@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +103,8 @@ private fun WayneedleScaffold() {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
-            contentWindowInsets = WindowInsets.safeDrawing,
+            // Top insets are left to each screen so app bars can extend behind the status bar.
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
             bottomBar = {
                 if (showNavigation && !useRail) {
                     WayneedleNavigationBar(
@@ -117,7 +120,6 @@ private fun WayneedleScaffold() {
             // The rail pads its own start edge; the content beside it must not pad that edge a second time.
             val contentPadding = if (railShown) {
                 PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
                     end = innerPadding.calculateEndPadding(layoutDirection),
                     bottom = innerPadding.calculateBottomPadding(),
                 )
@@ -137,7 +139,7 @@ private fun WayneedleScaffold() {
                     modifier = Modifier
                         .weight(1f)
                         .padding(contentPadding)
-                        .consumeWindowInsets(contentPadding),
+                        .consumeWindowInsets(innerPadding),
                 )
             }
         }

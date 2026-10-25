@@ -92,22 +92,26 @@ private fun Wordmark(modifier: Modifier = Modifier) {
 // ---- Gauge -----------------------------------------------------------------------------------------------------
 
 @Composable
-internal fun DashboardGauge(state: DashboardUiState, modifier: Modifier = Modifier) {
+internal fun DashboardGauge(
+    gauge: GaugeUiState,
+    phase: TripPhase,
+    awaitingFix: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Speedometer(
-        reading = state.gauge.reading,
-        scale = state.gauge.scale,
+        reading = gauge.reading,
+        scale = gauge.scale,
         modifier = modifier,
-        status = rememberGaugeStatus(state),
-        muted = state.trip.phase == TripPhase.PAUSED,
+        status = rememberGaugeStatus(gauge.reading, phase, awaitingFix),
+        muted = phase == TripPhase.PAUSED,
     )
 }
 
 /** The short state label under the dial. Changes only when the trip or GPS state changes, never per second. */
 @Composable
-private fun rememberGaugeStatus(state: DashboardUiState): GaugeStatus? {
-    val trip = state.trip
-    val noSpeed = state.gauge.reading is SpeedReading.Unavailable
-    return when (trip.phase) {
+private fun rememberGaugeStatus(reading: SpeedReading, phase: TripPhase, awaitingFix: Boolean): GaugeStatus? {
+    val noSpeed = reading is SpeedReading.Unavailable
+    return when (phase) {
         TripPhase.PAUSED -> GaugeStatus(
             label = stringResource(R.string.status_paused),
             tone = GaugeStatusTone.CAUTION,
@@ -115,7 +119,7 @@ private fun rememberGaugeStatus(state: DashboardUiState): GaugeStatus? {
             prominent = true,
         )
         TripPhase.RUNNING -> when {
-            trip.awaitingFix -> GaugeStatus(
+            awaitingFix -> GaugeStatus(
                 label = stringResource(R.string.status_waiting_for_gps),
                 tone = GaugeStatusTone.CAUTION,
                 loading = true,
@@ -132,7 +136,7 @@ private fun rememberGaugeStatus(state: DashboardUiState): GaugeStatus? {
             )
         }
         TripPhase.FINISHED -> GaugeStatus(
-            label = stringResource(R.string.status_trip_saved),
+            label = stringResource(R.string.status_finished),
             tone = GaugeStatusTone.ACTIVE,
             icon = WayneedleIcons.Check,
         )
@@ -462,14 +466,15 @@ internal fun TripSummaryCard(
 
 @Composable
 internal fun TripControls(
-    state: DashboardUiState,
+    phase: TripPhase,
+    isFinishing: Boolean,
     gate: LocationGate,
     actions: DashboardActions,
     modifier: Modifier = Modifier,
 ) {
-    val enabled = !state.isFinishing
-    val finishLabel = stringResource(if (state.isFinishing) R.string.action_saving else R.string.action_finish)
-    when (state.trip.phase) {
+    val enabled = !isFinishing
+    val finishLabel = stringResource(if (isFinishing) R.string.action_saving else R.string.action_finish)
+    when (phase) {
         TripPhase.IDLE -> if (gate == LocationGate.Ready) {
             ExpressiveButton(
                 label = stringResource(R.string.action_start),

@@ -12,7 +12,6 @@ import app.wayneedle.domain.model.TrackingState
 import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.domain.model.TripState
-import app.wayneedle.domain.model.TripStats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -159,7 +158,3 @@ class FakeTripRepository(initial: List<Trip> = emptyList()) : TripRepository {
 
     override suspend fun deleteAllTrips() = trips.update { emptyList() }
 }
-
-/** Convenience for tests and previews. */
-fun tripStats(distanceMeters: Double, activeSeconds: Long, maxSpeedMps: Float) =
-    TripStats(distanceMeters = distanceMeters, activeDurationMillis = activeSeconds * 1_000L, maxSpeedMps = maxSpeedMps)
