@@ -5,9 +5,9 @@ Read `docs/ARCHITECTURE.md` first. It defines package ownership and the shared c
 ## Hard device rule (non-negotiable)
 
 **Do NOT run `adb`, install an APK, run instrumentation tests, use an emulator/AVD, Firebase Test Lab, or any
-device/cloud testing.** Only the lead agent touches hardware, and only a verified Google Pixel 6 Pro
+device/cloud testing.** Only the maintainers touch hardware, and only a verified Google Pixel 6 Pro
 (`ro.product.device == raven`). Other phones may be attached to this machine; they are off limits.
-You may compile, run JVM unit tests, run lint, and write instrumentation test *source* (the lead executes it).
+You may compile, run JVM unit tests, run lint, and write instrumentation test *source* (the maintainers execute it).
 
 ## Language and style
 
@@ -15,7 +15,7 @@ You may compile, run JVM unit tests, run lint, and write instrumentation test *s
 * Kotlin official code style, 4-space indent, trailing commas. Match the surrounding code's comment density:
   KDoc on public API and on non-obvious thresholds/decisions; no narration comments.
 * Warnings are errors (`allWarningsAsErrors`, lint `warningsAsErrors`). Fix, don't suppress, unless justified in a comment.
-* Do not edit `*.gradle.kts`, `gradle/**`, `AndroidManifest.xml`, or `domain/**` (lead-owned). Request changes in your report.
+* Do not edit `*.gradle.kts`, `gradle/**`, `AndroidManifest.xml`, or `domain/**` (maintainer-owned). Request changes in your report or pull request description.
 * No new dependencies: everything needed is already in `gradle/libs.versions.toml`. If something is missing, say so.
 * No network, analytics, crash reporters, or INTERNET permission. Ever.
 
@@ -37,5 +37,5 @@ You may compile, run JVM unit tests, run lint, and write instrumentation test *s
 ## Final report (required)
 
 End with: files created/changed, tests added and their results (paste the pass/fail summary),
-key decisions and thresholds, contract changes you need from the lead, known problems. Do not claim anything
+key decisions and thresholds, contract changes you need from the maintainers, known problems. Do not claim anything
 you did not run.

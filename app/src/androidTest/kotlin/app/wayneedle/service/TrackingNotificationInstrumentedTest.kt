@@ -22,7 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Run only on the verified Pixel 6 Pro, by the lead. Checks the platform-facing pieces that JVM tests cannot:
+ * Run only on the verified Pixel 6 Pro, by the maintainers. Checks the platform-facing pieces that JVM tests cannot:
  * the real notification channel, the built notification and the launcher's exception handling.
  */
 @RunWith(AndroidJUnit4::class)

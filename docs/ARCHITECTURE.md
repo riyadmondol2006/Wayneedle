@@ -5,29 +5,29 @@ Single Gradle module (`:app`), strict package layering. Pure-Kotlin layers have 
 
 ```
 app.wayneedle
-├── domain/            CONTRACTS (lead-owned): models + interfaces. Pure Kotlin. Do not edit.
+├── domain/            CONTRACTS (maintainer-owned): models + interfaces. Pure Kotlin. Do not edit.
 │   └── model/
 ├── tracking/          GPS + trip engine. Pure Kotlin, except tracking/platform/ (LocationManager adapter, SystemTimeSource)
 ├── data/              Room database, DataStore settings, repositories, checkpoint store
-├── permissions/       Permission status checker; AppPermissions (contract constants, lead-owned)
+├── permissions/       Permission status checker; AppPermissions (contract constants, maintainer-owned)
 ├── service/           Foreground service, notification, TripForegroundLauncher implementation
 ├── ui/                Compose UI, theme, view models, navigation, previews
-├── AppContainer.kt    Manual DI (lead-owned). WayneedleApplication holds the container.
+├── AppContainer.kt    Manual DI (maintainer-owned). WayneedleApplication holds the container.
 ```
 
 ## Package ownership (no two workstreams edit the same file)
 
-| Package / path | Owner |
+| Package / path | Area |
 |---|---|
-| `domain/**`, `AppContainer.kt`, `WayneedleApplication.kt`, `AndroidManifest.xml`, all `*.gradle.kts`, `gradle/**`, `docs/ARCHITECTURE.md`, `AGENTS.md` | Lead |
-| `tracking/**`, `src/test/.../tracking/**` | Agent 1 — GPS & trip engine |
-| `ui/**`, `res/**` (except below), `src/androidTest/.../ui/**` | Agent 2 — Material 3 Expressive UI |
-| `data/**`, `src/test/.../data/**`, `src/androidTest/.../data/**` | Agent 3 — database & settings |
-| `service/**`, `permissions/` (except `AppPermissions.kt`), `res/drawable/ic_notification*`, `src/test/.../service/**` | Agent 4 — background & Android integration |
-| `README.md`, `LICENSE`, `CONTRIBUTING.md`, `PRIVACY.md`, `.gitignore`, `.editorconfig`, `config/**`, `.github/**`, `docs/**` (except ARCHITECTURE.md), `src/test/.../testing/Fixtures.kt`, architecture tests | Agent 5 — quality & docs |
+| `domain/**`, `AppContainer.kt`, `WayneedleApplication.kt`, `AndroidManifest.xml`, all `*.gradle.kts`, `gradle/**`, `docs/ARCHITECTURE.md`, `AGENTS.md` | Maintainers |
+| `tracking/**`, `src/test/.../tracking/**` | GPS & trip engine |
+| `ui/**`, `res/**` (except below), `src/androidTest/.../ui/**` | UI and design system |
+| `data/**`, `src/test/.../data/**`, `src/androidTest/.../data/**` | Database and settings |
+| `service/**`, `permissions/` (except `AppPermissions.kt`), `res/drawable/ic_notification*`, `src/test/.../service/**` | Background tracking and Android integration |
+| `README.md`, `LICENSE`, `CONTRIBUTING.md`, `PRIVACY.md`, `.gitignore`, `.editorconfig`, `config/**`, `.github/**`, `docs/**` (except ARCHITECTURE.md), `src/test/.../testing/Fixtures.kt`, architecture tests | Quality, tests and documentation |
 
 If you need a change in a file you do not own (e.g. a missing field in a contract), **do not edit it** —
-describe the exact change you need in your final report; the lead decides and applies it.
+describe the exact change you need in your final report; the maintainers decide and apply it.
 
 ## The one-GPS-owner rule
 
@@ -60,7 +60,7 @@ It never talks to `LocationManager`.
 * Average speed = distance ÷ active duration (`TripStats.averageSpeedMps`).
 * Live speed is shown whenever a reliable fix exists, even when IDLE/PAUSED, but is *not* added to stats while not RUNNING.
 
-## GPS fix acceptance (guidance; Agent 1 owns exact thresholds and documents them in KDoc)
+## GPS fix acceptance (guidance; the exact thresholds live in `FixFilterConfig` and are documented in KDoc there)
 
 Reject a fix when any applies: speed missing / NaN / negative; accuracy missing or worse than ~25 m;
 `speedAccuracyMps` present and worse than ~3 m/s; older than ~5 s relative to `TimeSource`;
@@ -100,4 +100,4 @@ Moving to the library implementation when Material 3 1.5 is stable is a containe
 ## Testing
 
 * JVM unit tests (`./gradlew testDebugUnitTest`) — allowed everywhere, run on the dev machine.
-* Instrumentation tests — **only** on the verified Google Pixel 6 Pro, **only run by the lead**.
+* Instrumentation tests — **only** on the verified Google Pixel 6 Pro, **only run by the maintainers**.
