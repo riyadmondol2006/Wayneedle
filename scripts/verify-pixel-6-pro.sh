@@ -10,7 +10,9 @@
 # Safety rules:
 #   * Only devices in the plain "device" state are considered. Offline, unauthorized and emulator-* entries are
 #     skipped without issuing any command.
-#   * For every other candidate the only commands run are reads of ro.product.manufacturer, ro.product.device and
+#   * A device becomes a candidate only if its "adb devices -l" row says "device:raven". Rows for any other hardware
+#     are skipped without issuing a single command to them.
+#   * For every candidate the only commands run are reads of ro.product.manufacturer, ro.product.device and
 #     ro.product.model (stopping at the first mismatch). Nothing else ever runs on a non-matching device.
 #   * Android release and SDK level are read from the verified device only.
 #
@@ -73,7 +75,7 @@ verified_serial=""
 verified_count=0
 ignored_count=0
 
-while read -r serial state _; do
+while read -r serial state rest; do
   # Skip the header, daemon messages and blank lines; accept only "<serial> <known state>" rows.
   case "$state" in
     device | offline | unauthorized | authorizing | recovery | sideload | bootloader | rescue | host | connecting) ;;
@@ -90,6 +92,14 @@ while read -r serial state _; do
   fi
   case "$serial" in
     emulator-*)
+      ignored_count=$((ignored_count + 1))
+      continue
+      ;;
+  esac
+  # Never talk to hardware the listing already identifies as something else.
+  case " $rest " in
+    *" device:$EXPECTED_DEVICE "*) ;;
+    *)
       ignored_count=$((ignored_count + 1))
       continue
       ;;

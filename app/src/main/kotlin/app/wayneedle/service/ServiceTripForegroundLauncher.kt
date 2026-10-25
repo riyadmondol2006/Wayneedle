@@ -60,11 +60,18 @@ private class AndroidServiceHost(private val context: Context) : ServiceHost {
  * limits, missing permission) is logged and recorded in [TrackingServiceStatus] instead of crashing the app.
  * Repeated [start] calls are harmless because the service handles each START command idempotently, and
  * no state is kept here that could go stale when the service stops itself.
+ *
+ * [stop] only calls `stopService` once the service reports that it is in the foreground. Stopping a service
+ * that was started with `startForegroundService` before it has called `startForeground` makes Android crash
+ * the process (`ForegroundServiceDidNotStartInTimeException`); a start followed immediately by a stop is
+ * therefore left to the service, which observes the controller and stops itself as soon as the trip is
+ * neither RUNNING nor PAUSED.
  */
 class ServiceTripForegroundLauncher internal constructor(
     private val host: ServiceHost,
     private val permissionChecker: LocationPermissionChecker,
     private val events: LauncherEvents,
+    private val isServiceForeground: () -> Boolean = { TrackingServiceStatus.isInForeground },
 ) : TripForegroundLauncher {
     constructor(
         context: Context,
@@ -76,6 +83,7 @@ class ServiceTripForegroundLauncher internal constructor(
     }
 
     override fun stop() {
+        if (!isServiceForeground()) return
         try {
             host.stopService()
         } catch (e: RuntimeException) {

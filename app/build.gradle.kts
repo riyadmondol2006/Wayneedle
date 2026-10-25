@@ -75,6 +75,18 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// Navigation pins kotlinx-serialization-core to 1.7.3, but room-migration (used by MigrationTestHelper) is built
+// against the 1.8.x runtime and fails with AbstractMethodError on the mixed classpath. Align the serialization
+// artifacts for instrumentation tests only; the app's own runtime classpath is consistent and untouched.
+val serializationTestVersion = libs.versions.kotlinxSerializationTestAlignment.get()
+configurations.matching { it.name.contains("AndroidTest") }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-serialization-")) {
+            useVersion(serializationTestVersion)
+        }
+    }
+}
+
 dependencies {
     // Compose
     implementation(platform(libs.compose.bom))

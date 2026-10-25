@@ -19,6 +19,9 @@ room = "2.8.5"
 datastore = "1.3.0"
 # Async
 coroutines = "1.11.0"
+# Instrumentation tests only: Navigation pins serialization-core to 1.7.3 while room-migration (MigrationTestHelper)
+# needs the 1.8.x runtime; see app/build.gradle.kts.
+kotlinxSerializationTestAlignment = "1.8.1"
 # Tests
 junit = "4.13.2"
 turbine = "1.2.1"

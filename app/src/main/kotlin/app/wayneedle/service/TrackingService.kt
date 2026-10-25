@@ -157,6 +157,7 @@ class TrackingService : Service() {
         graceJob = null
         scope.cancel()
         isForeground = false
+        TrackingServiceStatus.setInForeground(false)
         super.onDestroy()
     }
 
@@ -181,6 +182,7 @@ class TrackingService : Service() {
             false
         } else {
             isForeground = true
+            TrackingServiceStatus.setInForeground(true)
             true
         }
     }
@@ -280,6 +282,7 @@ class TrackingService : Service() {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             isForeground = false
         }
+        TrackingServiceStatus.setInForeground(false)
         stopSelf(lastStartId)
     }
 

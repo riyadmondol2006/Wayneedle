@@ -1,5 +1,6 @@
 package app.wayneedle.service
 
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /** Why entering (or requesting) the foreground state failed, without exposing platform exception types. */
@@ -37,6 +38,7 @@ internal sealed interface ForegroundStartResult {
  */
 object TrackingServiceStatus {
     private val last = AtomicReference<ForegroundStartResult?>(null)
+    private val inForeground = AtomicBoolean(false)
 
     internal fun record(result: ForegroundStartResult) {
         last.set(result)
@@ -47,4 +49,16 @@ object TrackingServiceStatus {
         get() = last.get()?.let { it is ForegroundStartResult.Started }
 
     internal fun lastResult(): ForegroundStartResult? = last.get()
+
+    /**
+     * True only between the service's successful `startForeground` and its stop. A service started with
+     * `startForegroundService` that is stopped before it has called `startForeground` makes Android crash the
+     * process, so callers outside the service must not stop it until this is true.
+     */
+    internal val isInForeground: Boolean
+        get() = inForeground.get()
+
+    internal fun setInForeground(value: Boolean) {
+        inForeground.set(value)
+    }
 }

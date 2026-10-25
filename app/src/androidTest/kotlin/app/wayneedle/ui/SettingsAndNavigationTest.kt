@@ -1,5 +1,9 @@
 package app.wayneedle.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -120,12 +124,16 @@ class SettingsAndNavigationTest {
     @Test
     fun navigationBarListsTheThreeTopLevelDestinationsAndReportsSelection() {
         var selected: String? = null
+        // Hosted like the app does (bottom slot, wrap-content height). Putting the bar straight into the test
+        // Surface would propagate its full-screen minimum constraints to every item and push two tabs off screen.
         rule.setWayneedleContent {
-            WayneedleNavigationBar(
-                items = Destination.topLevel,
-                selectedRoute = Destination.History.route,
-                onSelect = { selected = it.route },
-            )
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                WayneedleNavigationBar(
+                    items = Destination.topLevel,
+                    selectedRoute = Destination.History.route,
+                    onSelect = { selected = it.route },
+                )
+            }
         }
         rule.onNodeWithText(string(R.string.nav_dashboard)).assertIsDisplayed()
         rule.onNodeWithText(string(R.string.nav_history)).assertIsDisplayed().assertIsSelected()

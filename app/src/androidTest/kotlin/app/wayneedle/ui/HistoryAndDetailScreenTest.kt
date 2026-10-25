@@ -57,7 +57,7 @@ class HistoryAndDetailScreenTest {
     @Test
     fun tripsShowDistanceAndOpenTheirDetails() {
         showHistory(withTrips)
-        rule.onNodeWithText("27.80", substring = true, useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(localizedDecimal(27.80), substring = true, useUnmergedTree = true).assertIsDisplayed()
         rule.onAllNodes(hasClickAction()).onFirst().performClick()
         assertEquals(1, calls.size)
         assertEquals("open:trip-running", calls.single())
@@ -86,7 +86,7 @@ class HistoryAndDetailScreenTest {
     @Test
     fun historyStaysUsableAtLargeFontScale() {
         showHistory(withTrips, fontScale = 2f)
-        rule.onNodeWithText("27.80", substring = true, useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(localizedDecimal(27.80), substring = true, useUnmergedTree = true).assertIsDisplayed()
     }
 
     // ---- trip details -----------------------------------------------------------------------------------------------

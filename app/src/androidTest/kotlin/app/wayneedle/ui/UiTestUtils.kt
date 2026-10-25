@@ -17,11 +17,18 @@ import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
 import app.wayneedle.domain.model.ThemeMode
 import app.wayneedle.ui.theme.WayneedleTheme
+import java.util.Locale
 
 internal val targetContext: Context
     get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-internal fun string(@StringRes id: Int, vararg args: Any): String = targetContext.getString(id, *args)
+/** Without arguments the text is returned as-is: running `String.format` over a literal such as "100 % offline" throws. */
+internal fun string(@StringRes id: Int, vararg args: Any): String =
+    if (args.isEmpty()) targetContext.getString(id) else targetContext.getString(id, *args)
+
+/** A decimal as the app prints it on this device, in the device locale (separator and digits vary by locale). */
+internal fun localizedDecimal(value: Double, fractionDigits: Int = 2): String =
+    String.format(Locale.getDefault(), "%.${fractionDigits}f", value)
 
 internal fun plural(@PluralsRes id: Int, quantity: Int, vararg args: Any): String =
     targetContext.resources.getQuantityString(id, quantity, *args)

@@ -42,7 +42,12 @@ class TrackingNotificationInstrumentedTest {
         assertFalse(channel.shouldVibrate())
         assertFalse(channel.shouldShowLights())
         assertFalse(channel.canShowBadge())
-        assertEquals(Notification.VISIBILITY_PUBLIC, channel.lockscreenVisibility)
+        // The channel-level value is advisory and the platform may report "no override"; the notification's own
+        // visibility (asserted in the recording test) is what decides what the lock screen shows.
+        assertTrue(
+            channel.lockscreenVisibility == Notification.VISIBILITY_PUBLIC ||
+                channel.lockscreenVisibility == NotificationManager.IMPORTANCE_UNSPECIFIED,
+        )
     }
 
     @Test

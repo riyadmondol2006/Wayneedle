@@ -44,7 +44,8 @@ class ServiceTripForegroundLauncherTest {
     private fun launcher(
         host: ServiceHost,
         permission: LocationPermissionState = LocationPermissionState.GRANTED_PRECISE,
-    ) = ServiceTripForegroundLauncher(host, LocationPermissionChecker { permission }, events)
+        serviceForeground: Boolean = true,
+    ) = ServiceTripForegroundLauncher(host, LocationPermissionChecker { permission }, events) { serviceForeground }
 
     @Test
     fun `start requests the service once per call and reports success`() {
@@ -108,6 +109,27 @@ class ServiceTripForegroundLauncherTest {
         launcher.stop()
         launcher.stop()
         assertEquals(2, host.stops)
+    }
+
+    @Test
+    fun `stop never stops a service that has not entered the foreground yet`() {
+        // Regression: stopService() right after startForegroundService() crashes the process on Android.
+        val host = FakeHost()
+        val launcher = launcher(host, serviceForeground = false)
+        launcher.start()
+        launcher.stop()
+        assertEquals(1, host.starts)
+        assertEquals(0, host.stops)
+    }
+
+    @Test
+    fun `the service status flag follows the foreground state`() {
+        TrackingServiceStatus.setInForeground(false)
+        assertFalse(TrackingServiceStatus.isInForeground)
+        TrackingServiceStatus.setInForeground(true)
+        assertTrue(TrackingServiceStatus.isInForeground)
+        TrackingServiceStatus.setInForeground(false)
+        assertFalse(TrackingServiceStatus.isInForeground)
     }
 
     @Test

@@ -91,7 +91,7 @@ class DashboardScreenTest {
     @Test
     fun runningShowsTripStatisticsInTheSelectedFormat() {
         show(PreviewData.dashboard(PreviewData.running))
-        rule.onNodeWithText("27.80", substring = true, useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(localizedDecimal(27.80), substring = true, useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("0:38:12", useUnmergedTree = true).assertIsDisplayed()
     }
 
