@@ -47,7 +47,14 @@ class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : T
         val phase = mutableState.value.trip.phase
         if (phase != TripPhase.IDLE && phase != TripPhase.FINISHED) return CommandResult.InvalidTransition(phase)
         mutableState.update {
-            it.copy(trip = TripState(phase = TripPhase.RUNNING, tripId = "fake-trip", startedAtEpochMillis = START_TIME, awaitingFix = true))
+            it.copy(
+                trip = TripState(
+                    phase = TripPhase.RUNNING,
+                    tripId = "fake-trip",
+                    startedAtEpochMillis = START_TIME,
+                    awaitingFix = true,
+                ),
+            )
         }
         return CommandResult.Ok
     }
@@ -65,7 +72,9 @@ class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : T
         resumeResult?.let { return it }
         val phase = mutableState.value.trip.phase
         if (phase != TripPhase.PAUSED) return CommandResult.InvalidTransition(phase)
-        mutableState.update { it.copy(trip = it.trip.copy(phase = TripPhase.RUNNING, awaitingFix = true, recovered = false)) }
+        mutableState.update {
+            it.copy(trip = it.trip.copy(phase = TripPhase.RUNNING, awaitingFix = true, recovered = false))
+        }
         return CommandResult.Ok
     }
 
@@ -148,7 +157,9 @@ class FakeTripRepository(initial: List<Trip> = emptyList()) : TripRepository {
     override suspend fun getTrip(id: String): Trip? = trips.value.firstOrNull { it.id == id }
 
     override suspend fun saveTrip(trip: Trip) {
-        trips.update { list -> (list.filterNot { it.id == trip.id } + trip).sortedByDescending { it.startedAtEpochMillis } }
+        trips.update { list ->
+            (list.filterNot { it.id == trip.id } + trip).sortedByDescending { it.startedAtEpochMillis }
+        }
     }
 
     override suspend fun deleteTrip(id: String) {

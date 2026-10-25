@@ -75,7 +75,12 @@ class DataStoreSettingsRepositoryTest {
         repository.setKeepScreenOn(false)
 
         assertEquals(
-            AppSettings(speedUnit = SpeedUnit.MPH, themeMode = ThemeMode.DARK, dynamicColor = false, keepScreenOn = false),
+            AppSettings(
+                speedUnit = SpeedUnit.MPH,
+                themeMode = ThemeMode.DARK,
+                dynamicColor = false,
+                keepScreenOn = false,
+            ),
             repository.settings.first(),
         )
     }

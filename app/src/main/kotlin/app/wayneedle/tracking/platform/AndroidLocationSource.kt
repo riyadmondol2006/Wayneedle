@@ -86,11 +86,13 @@ class AndroidLocationSource(context: Context) : LocationSource {
         }
         when (failure) {
             null -> awaitClose { unregister(manager, locationListener, gnssCallback) }
+
             LocationSourceEvent.PermissionDenied -> {
                 unregister(manager, locationListener, gnssCallback)
                 send(failure)
                 close()
             }
+
             else -> {
                 unregister(manager, locationListener, gnssCallback)
                 send(failure)

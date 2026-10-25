@@ -41,7 +41,8 @@ class TripTrackerTest {
 
     @Test
     fun `initial state reflects the permission checker and holds no GPS listener`() = runTest {
-        val h = TrackerHarness(this, permissions = FakePermissionChecker(LocationPermissionState.GRANTED_APPROXIMATE_ONLY))
+        val h =
+            TrackerHarness(this, permissions = FakePermissionChecker(LocationPermissionState.GRANTED_APPROXIMATE_ONLY))
         h.runCurrent()
         assertEquals(LocationPermissionState.GRANTED_APPROXIMATE_ONLY, h.state.permission)
         assertEquals(TripPhase.IDLE, h.state.trip.phase)
@@ -365,7 +366,8 @@ class TripTrackerTest {
 
     @Test
     fun `start requires precise permission and an enabled provider`() = runTest {
-        val h = TrackerHarness(this, permissions = FakePermissionChecker(LocationPermissionState.GRANTED_APPROXIMATE_ONLY))
+        val h =
+            TrackerHarness(this, permissions = FakePermissionChecker(LocationPermissionState.GRANTED_APPROXIMATE_ONLY))
         h.showUi()
         assertEquals(0, h.source.activeCollectors, "approximate location cannot measure speed")
         assertEquals(CommandResult.PermissionRequired, h.tracker.startTrip())

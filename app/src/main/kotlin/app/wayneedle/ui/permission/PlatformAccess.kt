@@ -86,7 +86,10 @@ fun rememberLocationAccess(
             requestPermission = { launcher.launch(AppPermissions.location) },
             openAppSettings = {
                 context.startSettings(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    ),
                 )
             },
             openLocationSettings = { context.startSettings(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) },

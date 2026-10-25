@@ -56,9 +56,13 @@ class GpsSignalClassifier(private val config: SignalQualityConfig = SignalQualit
         var quality = when {
             horizontalAccuracyM == null || !horizontalAccuracyM.isFinite() || horizontalAccuracyM < 0f ->
                 GpsSignalQuality.POOR
+
             horizontalAccuracyM <= config.excellentAccuracyM -> GpsSignalQuality.EXCELLENT
+
             horizontalAccuracyM <= config.goodAccuracyM -> GpsSignalQuality.GOOD
+
             horizontalAccuracyM <= config.fairAccuracyM -> GpsSignalQuality.FAIR
+
             else -> GpsSignalQuality.POOR
         }
         if (satellitesUsed != null) {

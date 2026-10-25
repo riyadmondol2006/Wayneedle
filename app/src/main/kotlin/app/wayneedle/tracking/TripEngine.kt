@@ -239,7 +239,13 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         phase = TripPhase.IDLE
     }
 
-    private fun AcceptedFix.toAnchor() = Anchor(latitude, longitude, horizontalAccuracyM, speedMps, elapsedRealtimeNanos)
+    private fun AcceptedFix.toAnchor() = Anchor(
+        latitude,
+        longitude,
+        horizontalAccuracyM,
+        speedMps,
+        elapsedRealtimeNanos,
+    )
 
     private companion object {
         fun TripCheckpoint.isRestorable(): Boolean =

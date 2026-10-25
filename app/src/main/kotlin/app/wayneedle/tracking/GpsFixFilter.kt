@@ -237,7 +237,12 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
         speed: Float,
         intervalSeconds: Double,
     ): Boolean {
-        val distance = GeoMath.haversineMeters(reference.latitude, reference.longitude, sample.latitude, sample.longitude)
+        val distance = GeoMath.haversineMeters(
+            reference.latitude,
+            reference.longitude,
+            sample.latitude,
+            sample.longitude,
+        )
         val impliedSpeed = distance / intervalSeconds
         val meanReportedSpeed = (reference.rawSpeedMps + speed) / 2.0
         val positionSlack = (reference.horizontalAccuracyM + accuracy) / intervalSeconds

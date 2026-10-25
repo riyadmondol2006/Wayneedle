@@ -3,8 +3,8 @@ package app.wayneedle.data.db
 import app.cash.turbine.test
 import app.wayneedle.domain.model.TripStats
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -159,7 +159,9 @@ class RoomTripRepositoryTest {
     @Test
     fun `dirty stored values are repaired when read back`() = runTest {
         val repository = repository()
-        dao.upsert(aTripEntity(id = "dirty", distanceMeters = Double.NaN, activeDurationMillis = -1L, maxSpeedMps = -2f))
+        dao.upsert(
+            aTripEntity(id = "dirty", distanceMeters = Double.NaN, activeDurationMillis = -1L, maxSpeedMps = -2f),
+        )
 
         assertEquals(TripStats.Empty, repository.getTrip("dirty")?.stats)
     }

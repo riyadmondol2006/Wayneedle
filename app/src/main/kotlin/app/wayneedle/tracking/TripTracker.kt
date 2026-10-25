@@ -397,16 +397,19 @@ class TripTracker(
     private fun onSourceEventLocked(event: LocationSourceEvent) {
         when (event) {
             is LocationSourceEvent.Fix -> onFixLocked(event.sample)
+
             is LocationSourceEvent.ProviderEnabledChanged -> {
                 providerEnabled = event.enabled
                 if (!event.enabled) loseSignalLocked()
                 publishLocked()
             }
+
             is LocationSourceEvent.Satellites -> {
                 satellitesUsed = event.used.takeIf { it >= 0 }
                 satellitesInView = event.inView.takeIf { it >= 0 }
                 publishLocked()
             }
+
             LocationSourceEvent.PermissionDenied -> {
                 val current = permissionChecker.current()
                 // The platform just refused us, whatever the checker claims: wait for refreshEnvironment.
@@ -437,6 +440,7 @@ class TripTracker(
                 )
                 engine.onAcceptedFix(fix)
             }
+
             is FixDecision.Rejected -> if (decision.reason.clearsLiveSpeed) {
                 liveSpeed = LiveSpeed.Unavailable
                 smoother.reset()

@@ -3,8 +3,8 @@ package app.wayneedle.ui.speedometer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -154,6 +154,7 @@ fun Speedometer(
                 formatter.speedInUnit(reading.valueInUnit.toDouble()),
             )
         }
+
         is SpeedReading.Unavailable -> stringResource(
             R.string.spoken_speed_unavailable,
             stringResource(reading.reason.labelRes),
@@ -203,7 +204,13 @@ fun Speedometer(
                         arcColor = arcColor,
                         needleColor = needleColor,
                         haloColor = needleHalo,
-                        alpha = if (!available) UNAVAILABLE_ALPHA else if (muted) 0.5f else 1f,
+                        alpha = if (!available) {
+                            UNAVAILABLE_ALPHA
+                        } else if (muted) {
+                            0.5f
+                        } else {
+                            1f
+                        },
                         showArc = available,
                     )
                 }
@@ -265,7 +272,11 @@ private fun SpeedReadout(
                 Text(
                     text = formatter.speedInUnit(reading.valueInUnit.toDouble()),
                     style = digitsStyle,
-                    color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    color = if (muted) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                     maxLines = 1,
                     softWrap = false,
                 )
@@ -275,6 +286,7 @@ private fun SpeedReadout(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
             is SpeedReading.Unavailable -> {
                 Text(
                     text = PLACEHOLDER,
@@ -326,11 +338,20 @@ private fun GaugeStatusPill(status: GaugeStatus, modifier: Modifier = Modifier) 
         ) {
             when {
                 status.loading -> NeedleLoadingIndicator(size = 18.dp, color = content)
-                status.icon != null -> Icon(status.icon, contentDescription = null, modifier = Modifier.size(if (status.prominent) 22.dp else 18.dp))
+
+                status.icon != null -> Icon(
+                    status.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(if (status.prominent) 22.dp else 18.dp),
+                )
             }
             Text(
                 text = status.label,
-                style = if (status.prominent) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
+                style = if (status.prominent) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
             )
         }
     }

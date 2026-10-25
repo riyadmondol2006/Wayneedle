@@ -9,8 +9,14 @@ import kotlin.test.assertTrue
 class GaugeScaleTest {
     @Test
     fun `base scales are 0 to 240 km per hour and 0 to 150 mph`() {
-        assertEquals(GaugeScale(SpeedUnit.KMH, max = 240, majorStep = 40, minorStep = 10), GaugeScale.base(SpeedUnit.KMH))
-        assertEquals(GaugeScale(SpeedUnit.MPH, max = 150, majorStep = 25, minorStep = 5), GaugeScale.base(SpeedUnit.MPH))
+        assertEquals(
+            GaugeScale(SpeedUnit.KMH, max = 240, majorStep = 40, minorStep = 10),
+            GaugeScale.base(SpeedUnit.KMH),
+        )
+        assertEquals(
+            GaugeScale(SpeedUnit.MPH, max = 150, majorStep = 25, minorStep = 5),
+            GaugeScale.base(SpeedUnit.MPH),
+        )
     }
 
     @Test

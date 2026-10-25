@@ -10,9 +10,9 @@ import app.wayneedle.domain.TripCheckpointStore
 import app.wayneedle.domain.TripForegroundLauncher
 import app.wayneedle.domain.TripRepository
 import app.wayneedle.domain.model.LocationPermissionState
+import app.wayneedle.domain.model.TrackingState
 import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TripCheckpoint
-import app.wayneedle.domain.model.TrackingState
 import app.wayneedle.testing.aSample
 import app.wayneedle.testing.latitudeAfterNorth
 import kotlinx.coroutines.CompletableDeferred
@@ -63,7 +63,12 @@ class FakeLocationSource(
         try {
             emit(LocationSourceEvent.ProviderEnabledChanged(providerEnabled))
             // Per the contract the flow completes right after PermissionDenied.
-            emitAll(events.transformWhile { emit(it); it != LocationSourceEvent.PermissionDenied })
+            emitAll(
+                events.transformWhile {
+                    emit(it)
+                    it != LocationSourceEvent.PermissionDenied
+                },
+            )
         } finally {
             if (teardownMillis > 0L) withContext(NonCancellable) { delay(teardownMillis) }
             active.decrementAndGet()

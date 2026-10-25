@@ -59,10 +59,12 @@ class NotificationUpdateGateTest {
             val next = content("v${counter++}")
             when (val decision = gate.decide(next, now)) {
                 NotificationUpdateGate.Decision.Skip -> Unit
+
                 NotificationUpdateGate.Decision.PostNow -> {
                     gate.onPosted(next, now)
                     posts++
                 }
+
                 is NotificationUpdateGate.Decision.PostAfter -> {
                     now += decision.delayMillis
                     gate.onPosted(next, now)
@@ -81,14 +83,20 @@ class NotificationUpdateGateTest {
         gate.onDismissedByUser(TripPhase.RUNNING)
         assertEquals(NotificationUpdateGate.Decision.Skip, gate.decide(content("b"), nowMillis = 5_000L))
         assertEquals(NotificationUpdateGate.Decision.Skip, gate.decide(content("c"), nowMillis = 6_000L))
-        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("d", TripPhase.PAUSED), nowMillis = 7_000L))
+        assertEquals(
+            NotificationUpdateGate.Decision.PostNow,
+            gate.decide(content("d", TripPhase.PAUSED), nowMillis = 7_000L),
+        )
     }
 
     @Test
     fun `dismissal is forgotten once the phase changed`() {
         val gate = NotificationUpdateGate()
         gate.onDismissedByUser(TripPhase.RUNNING)
-        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("p", TripPhase.PAUSED), nowMillis = 0L))
+        assertEquals(
+            NotificationUpdateGate.Decision.PostNow,
+            gate.decide(content("p", TripPhase.PAUSED), nowMillis = 0L),
+        )
         gate.onPosted(content("p", TripPhase.PAUSED), nowMillis = 0L)
         // Back in RUNNING later: no longer suppressed.
         assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("r"), nowMillis = 2_000L))

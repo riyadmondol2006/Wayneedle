@@ -44,7 +44,10 @@ class TripTrackerPersistenceTest {
         assertEquals(1, h.checkpoints.writes.size)
         h.advance(1_000L)
         h.advance(5_000L)
-        assertEquals(listOf(TripPhase.RUNNING to 0L, TripPhase.RUNNING to 5_000L, TripPhase.RUNNING to 10_000L), written())
+        assertEquals(
+            listOf(TripPhase.RUNNING to 0L, TripPhase.RUNNING to 5_000L, TripPhase.RUNNING to 10_000L),
+            written(),
+        )
 
         h.advance(2_000L)
         h.tracker.pauseTrip()

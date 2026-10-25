@@ -56,8 +56,11 @@ class SpeedSmoother(private val config: SpeedSmootherConfig = SpeedSmootherConfi
         lastTimestampNanos = elapsedRealtimeNanos
         val next = when {
             speedMps < config.stationarySpeedMps -> 0f
+
             previous == null -> speedMps
+
             intervalNanos <= 0L || intervalNanos > config.resetAfterGapMillis * NANOS_PER_MILLI -> speedMps
+
             else -> {
                 val delta = speedMps - previous
                 val responsiveness = (abs(delta) / config.fullResponseDeltaMps).coerceIn(0f, 1f)

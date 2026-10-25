@@ -256,7 +256,10 @@ class TripEngineTest {
         assertNull(engine.checkpoint(sec(0.0), 0L))
         engine.start("trip", sec(0.0), 7L)
         val running = engine.checkpoint(sec(3.0), 70L)
-        assertEquals(TripCheckpoint("trip", TripPhase.RUNNING, 7L, TripStats(activeDurationMillis = 3_000L), 70L), running)
+        assertEquals(
+            TripCheckpoint("trip", TripPhase.RUNNING, 7L, TripStats(activeDurationMillis = 3_000L), 70L),
+            running,
+        )
         engine.pause(sec(4.0))
         assertEquals(TripPhase.PAUSED, engine.checkpoint(sec(5.0), 80L)?.phase)
         engine.finish(sec(5.0))

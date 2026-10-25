@@ -34,7 +34,9 @@ internal class TrackingNotification(private val context: Context) {
         PendingIntent.getActivity(context, REQUEST_OPEN, intent, PENDING_FLAGS)
     }
 
-    private val deleteIntent: PendingIntent by lazy { servicePendingIntent(REQUEST_DISMISSED, TrackingServiceActions.NOTIFICATION_DISMISSED) }
+    private val deleteIntent: PendingIntent by lazy {
+        servicePendingIntent(REQUEST_DISMISSED, TrackingServiceActions.NOTIFICATION_DISMISSED)
+    }
 
     private val pauseIntent: PendingIntent by lazy {
         servicePendingIntent(REQUEST_PAUSE, ServiceCommand.actionFor(NotificationAction.PAUSE))
@@ -98,11 +100,13 @@ internal class TrackingNotification(private val context: Context) {
                 context.getString(R.string.service_action_pause),
                 pauseIntent,
             )
+
             NotificationAction.RESUME -> builder.addAction(
                 R.drawable.ic_notification_resume,
                 context.getString(R.string.service_action_resume),
                 resumeIntent,
             )
+
             null -> Unit
         }
         return builder.build()

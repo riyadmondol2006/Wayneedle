@@ -76,7 +76,10 @@ class DashboardViewModelTest {
         val controller = FakeTrackingController(PreviewData.permissionDenied)
         val vm = viewModel(controller)
         keepActive(vm.uiState)
-        assertEquals(SpeedReading.Unavailable(SpeedUnavailableReason.PERMISSION_REQUIRED), vm.uiState.value.gauge.reading)
+        assertEquals(
+            SpeedReading.Unavailable(SpeedUnavailableReason.PERMISSION_REQUIRED),
+            vm.uiState.value.gauge.reading,
+        )
 
         controller.update { PreviewData.approximateOnly }
         assertEquals(SpeedReading.Unavailable(SpeedUnavailableReason.APPROXIMATE_ONLY), vm.uiState.value.gauge.reading)
@@ -314,7 +317,9 @@ class DashboardViewModelTest {
             assertEquals(SpeedUnit.KMH, awaitItem().unit)
             settings.setSpeedUnit(SpeedUnit.MPH)
             assertEquals(SpeedUnit.MPH, awaitItem().unit)
-            controller.update { it.copy(permission = LocationPermissionState.DENIED, liveSpeed = LiveSpeed.Unavailable) }
+            controller.update {
+                it.copy(permission = LocationPermissionState.DENIED, liveSpeed = LiveSpeed.Unavailable)
+            }
             val denied = awaitItem()
             assertIs<SpeedReading.Unavailable>(denied.gauge.reading)
             cancelAndIgnoreRemainingEvents()

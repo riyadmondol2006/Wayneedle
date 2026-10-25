@@ -56,14 +56,20 @@ class TrackingNotificationInstrumentedTest {
         assertNotNull(notification.contentIntent)
         assertNotNull(notification.deleteIntent)
         assertEquals(1, notification.actions.size)
-        assertEquals(context.getString(app.wayneedle.R.string.service_action_pause), notification.actions[0].title.toString())
+        assertEquals(
+            context.getString(app.wayneedle.R.string.service_action_pause),
+            notification.actions[0].title.toString(),
+        )
     }
 
     @Test
     fun pausedNotificationOffersResume() {
         val notification = notifications.build(NotificationContent.placeholder(TripPhase.PAUSED, notifications.labels))
         assertEquals(1, notification.actions.size)
-        assertEquals(context.getString(app.wayneedle.R.string.service_action_resume), notification.actions[0].title.toString())
+        assertEquals(
+            context.getString(app.wayneedle.R.string.service_action_resume),
+            notification.actions[0].title.toString(),
+        )
     }
 
     @Test
@@ -74,7 +80,13 @@ class TrackingNotificationInstrumentedTest {
 
     @Test
     fun launcherNeverThrowsAndReportsTheOutcome() {
-        val launcher = ServiceTripForegroundLauncher(context, LocationPermissionChecker { LocationPermissionState.GRANTED_PRECISE })
+        val launcher =
+            ServiceTripForegroundLauncher(
+                context,
+                LocationPermissionChecker {
+                    LocationPermissionState.GRANTED_PRECISE
+                },
+            )
         val result = launcher.launch()
         // Started when the platform accepted the request; a Failed result (not a crash) otherwise.
         assertTrue(result is ForegroundStartResult.Started || result is ForegroundStartResult.Failed)

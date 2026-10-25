@@ -84,6 +84,7 @@ fun HistoryScreen(
             state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 NeedleLoadingIndicator(size = 48.dp)
             }
+
             state.isEmpty -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 EmptyState(
                     icon = WayneedleIcons.History,
@@ -91,6 +92,7 @@ fun HistoryScreen(
                     body = stringResource(R.string.history_empty_body),
                 )
             }
+
             else -> TripList(state, formatter, padding, onOpenTrip, onRequestDelete)
         }
     }
@@ -182,7 +184,11 @@ private fun TripCard(
         spokenSpeed(stats.averageSpeedMps, unit, formatter),
     )
     val openLabel = stringResource(R.string.action_open_trip)
-    Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(
+        modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
                 modifier = Modifier
@@ -218,7 +224,10 @@ private fun TripCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = WayneedleIcons.Delete,
-                    contentDescription = stringResource(R.string.action_delete_trip_from, formatter.dateTime(trip.startedAtEpochMillis)),
+                    contentDescription = stringResource(
+                        R.string.action_delete_trip_from,
+                        formatter.dateTime(trip.startedAtEpochMillis),
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

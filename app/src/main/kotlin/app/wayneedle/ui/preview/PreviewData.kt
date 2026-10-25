@@ -32,13 +32,19 @@ object PreviewData {
         satellitesInView = 24,
     )
 
-    val fairGps = goodGps.copy(quality = GpsSignalQuality.FAIR, horizontalAccuracyM = 19f, satellitesUsed = 6, satellitesInView = 11)
+    val fairGps = goodGps.copy(
+        quality = GpsSignalQuality.FAIR,
+        horizontalAccuracyM = 19f,
+        satellitesUsed = 6,
+        satellitesInView = 11,
+    )
 
     val searchingGps = GpsStatus(providerEnabled = true, quality = GpsSignalQuality.NONE)
 
     val gpsOff = GpsStatus(providerEnabled = false, quality = GpsSignalQuality.NONE)
 
-    private val runningStats = TripStats(distanceMeters = 27_800.0, activeDurationMillis = 2_292_000L, maxSpeedMps = 31.4f)
+    private val runningStats =
+        TripStats(distanceMeters = 27_800.0, activeDurationMillis = 2_292_000L, maxSpeedMps = 31.4f)
 
     fun live(speedMps: Float) = LiveSpeed.Available(smoothedMps = speedMps, rawMps = speedMps)
 
@@ -105,7 +111,11 @@ object PreviewData {
         isFinishing: Boolean = false,
         savedTrip: Trip? = null,
     ): DashboardUiState {
-        val live = (state.liveSpeed as? LiveSpeed.Available)?.let { unit.fromMetersPerSecond(it.smoothedMps.toDouble()).toFloat() } ?: 0f
+        val live =
+            (state.liveSpeed as? LiveSpeed.Available)?.let {
+                unit.fromMetersPerSecond(it.smoothedMps.toDouble()).toFloat()
+            }
+                ?: 0f
         return buildUiState(
             state = state,
             unit = unit,

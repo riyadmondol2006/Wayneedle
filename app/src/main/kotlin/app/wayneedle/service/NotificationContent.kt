@@ -63,19 +63,31 @@ internal data class NotificationContent(
          * The speed is only ever a real, accepted GPS reading; without one the text says why
          * (no permission, GPS off, still searching) instead of showing a made-up number.
          */
-        fun from(state: TrackingState, unit: SpeedUnit, labels: NotificationLabels, locale: Locale): NotificationContent? {
+        fun from(
+            state: TrackingState,
+            unit: SpeedUnit,
+            labels: NotificationLabels,
+            locale: Locale,
+        ): NotificationContent? {
             val phase = state.trip.phase
             val stats = state.trip.stats
             val distance = formatDistance(stats.distanceMeters, unit, labels, locale)
             val duration = formatDuration(stats.activeDurationMillis, locale)
             return when (phase) {
                 TripPhase.IDLE, TripPhase.FINISHED -> null
+
                 TripPhase.RUNNING -> NotificationContent(
                     phase = phase,
                     title = labels.titleRecording,
-                    text = labels.recordingFormat.formatWith(locale, leadingText(state, unit, labels, locale), distance, duration),
+                    text = labels.recordingFormat.formatWith(
+                        locale,
+                        leadingText(state, unit, labels, locale),
+                        distance,
+                        duration,
+                    ),
                     action = NotificationAction.PAUSE,
                 )
+
                 TripPhase.PAUSED -> NotificationContent(
                     phase = phase,
                     title = labels.titlePaused,
@@ -104,7 +116,12 @@ internal data class NotificationContent(
             },
         )
 
-        private fun leadingText(state: TrackingState, unit: SpeedUnit, labels: NotificationLabels, locale: Locale): String {
+        private fun leadingText(
+            state: TrackingState,
+            unit: SpeedUnit,
+            labels: NotificationLabels,
+            locale: Locale,
+        ): String {
             val speed = state.liveSpeed
             if (speed is LiveSpeed.Available && speed.smoothedMps.isFinite() && speed.smoothedMps >= 0f) {
                 return formatSpeed(speed.smoothedMps.toDouble(), unit, labels, locale)
@@ -116,14 +133,24 @@ internal data class NotificationContent(
             }
         }
 
-        internal fun formatSpeed(metersPerSecond: Double, unit: SpeedUnit, labels: NotificationLabels, locale: Locale): String {
+        internal fun formatSpeed(
+            metersPerSecond: Double,
+            unit: SpeedUnit,
+            labels: NotificationLabels,
+            locale: Locale,
+        ): String {
             val value = nonNegative(unit.fromMetersPerSecond(metersPerSecond))
             val number = formatNumber(value, fractionDigits = 0, locale = locale)
             val format = if (unit == SpeedUnit.KMH) labels.speedKmhFormat else labels.speedMphFormat
             return format.formatWith(locale, number)
         }
 
-        internal fun formatDistance(meters: Double, unit: SpeedUnit, labels: NotificationLabels, locale: Locale): String {
+        internal fun formatDistance(
+            meters: Double,
+            unit: SpeedUnit,
+            labels: NotificationLabels,
+            locale: Locale,
+        ): String {
             val value = nonNegative(unit.fromMeters(meters))
             val digits = if (value < TWO_DECIMALS_BELOW) 2 else 1
             val number = formatNumber(value, fractionDigits = digits, locale = locale)

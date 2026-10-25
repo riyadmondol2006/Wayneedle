@@ -54,5 +54,6 @@ fun speedReading(
             SpeedReading.Unavailable(speedUnavailableReason(permission, gps, hasGpsHardware))
         }
     }
+
     LiveSpeed.Unavailable -> SpeedReading.Unavailable(speedUnavailableReason(permission, gps, hasGpsHardware))
 }

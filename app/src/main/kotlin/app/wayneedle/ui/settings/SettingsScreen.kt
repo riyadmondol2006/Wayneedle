@@ -177,7 +177,11 @@ private fun AppearanceSection(settings: AppSettings, dynamicColorSupported: Bool
         SwitchRow(
             title = stringResource(R.string.settings_dynamic_color),
             subtitle = stringResource(
-                if (dynamicColorSupported) R.string.settings_dynamic_color_summary else R.string.settings_dynamic_color_unsupported,
+                if (dynamicColorSupported) {
+                    R.string.settings_dynamic_color_summary
+                } else {
+                    R.string.settings_dynamic_color_unsupported
+                },
             ),
             checked = settings.dynamicColor && dynamicColorSupported,
             enabled = dynamicColorSupported,
@@ -278,7 +282,11 @@ private fun SwitchRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
             Text(
                 text = subtitle,

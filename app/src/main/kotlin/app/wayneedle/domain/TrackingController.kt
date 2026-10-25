@@ -1,7 +1,7 @@
 package app.wayneedle.domain
 
-import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TrackingState
+import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TripPhase
 import kotlinx.coroutines.flow.StateFlow
 

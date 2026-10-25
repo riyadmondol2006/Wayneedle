@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.wayneedle.R
 import app.wayneedle.domain.model.SpeedUnit
+import app.wayneedle.ui.preview.PreviewData
 import app.wayneedle.ui.speedometer.GAUGE_HEIGHT_FRACTION
 import app.wayneedle.ui.speedometer.GPS_INDICATOR_TAG
 import app.wayneedle.ui.speedometer.GaugeScale
@@ -21,7 +22,6 @@ import app.wayneedle.ui.speedometer.SPEEDOMETER_TAG
 import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.SpeedUnavailableReason
 import app.wayneedle.ui.speedometer.Speedometer
-import app.wayneedle.ui.preview.PreviewData
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test

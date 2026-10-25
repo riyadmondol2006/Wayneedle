@@ -37,7 +37,11 @@ class MappersTest {
             id = "h",
             startedAtEpochMillis = Long.MAX_VALUE - 1,
             endedAtEpochMillis = Long.MAX_VALUE,
-            stats = TripStats(distanceMeters = 40_075_000.0, activeDurationMillis = Long.MAX_VALUE, maxSpeedMps = Float.MAX_VALUE),
+            stats = TripStats(
+                distanceMeters = 40_075_000.0,
+                activeDurationMillis = Long.MAX_VALUE,
+                maxSpeedMps = Float.MAX_VALUE,
+            ),
         )
 
         assertEquals(zero, zero.toEntity().toDomainOrNull())
@@ -78,7 +82,10 @@ class MappersTest {
         val entity = aTripEntity(startedAtEpochMillis = 5_000L, endedAtEpochMillis = 1_000L)
 
         assertEquals(5_000L, entity.toDomainOrNull()?.endedAtEpochMillis)
-        assertEquals(5_000L, aTrip().copy(startedAtEpochMillis = 5_000L, endedAtEpochMillis = 1_000L).toEntity().endedAtEpochMillis)
+        assertEquals(
+            5_000L,
+            aTrip().copy(startedAtEpochMillis = 5_000L, endedAtEpochMillis = 1_000L).toEntity().endedAtEpochMillis,
+        )
     }
 
     @Test
@@ -138,7 +145,11 @@ class MappersTest {
     @Test
     fun `odd live values are cleaned when writing a checkpoint`() {
         val entity = aCheckpoint(
-            stats = TripStats(distanceMeters = Double.NaN, activeDurationMillis = -1L, maxSpeedMps = Float.POSITIVE_INFINITY),
+            stats = TripStats(
+                distanceMeters = Double.NaN,
+                activeDurationMillis = -1L,
+                maxSpeedMps = Float.POSITIVE_INFINITY,
+            ),
             startedAtEpochMillis = -1L,
             savedAtEpochMillis = -1L,
         ).toEntity()

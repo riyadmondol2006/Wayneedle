@@ -45,7 +45,10 @@ class HistoryViewModelTest {
     fun `the same instant can fall on different days in different zones`() {
         val lateEvening = trip("late", PreviewData.NOW + 11 * 3_600_000L) // 23:00 UTC
         assertEquals(LocalDate.of(2026, 10, 25), groupTripsByDay(listOf(lateEvening), utc).single().date)
-        assertEquals(LocalDate.of(2026, 10, 26), groupTripsByDay(listOf(lateEvening), ZoneOffset.ofHours(2)).single().date)
+        assertEquals(
+            LocalDate.of(2026, 10, 26),
+            groupTripsByDay(listOf(lateEvening), ZoneOffset.ofHours(2)).single().date,
+        )
     }
 
     @Test

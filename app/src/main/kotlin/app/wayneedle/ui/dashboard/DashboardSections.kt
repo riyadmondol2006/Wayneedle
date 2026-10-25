@@ -118,28 +118,33 @@ private fun rememberGaugeStatus(reading: SpeedReading, phase: TripPhase, awaitin
             icon = WayneedleIcons.Pause,
             prominent = true,
         )
+
         TripPhase.RUNNING -> when {
             awaitingFix -> GaugeStatus(
                 label = stringResource(R.string.status_waiting_for_gps),
                 tone = GaugeStatusTone.CAUTION,
                 loading = true,
             )
+
             noSpeed -> GaugeStatus(
                 label = stringResource(R.string.status_signal_lost),
                 tone = GaugeStatusTone.CAUTION,
                 loading = true,
             )
+
             else -> GaugeStatus(
                 label = stringResource(R.string.status_recording),
                 tone = GaugeStatusTone.ACTIVE,
                 icon = WayneedleIcons.Gps,
             )
         }
+
         TripPhase.FINISHED -> GaugeStatus(
             label = stringResource(R.string.status_finished),
             tone = GaugeStatusTone.ACTIVE,
             icon = WayneedleIcons.Check,
         )
+
         TripPhase.IDLE ->
             if (noSpeed) null else GaugeStatus(stringResource(R.string.status_ready), GaugeStatusTone.NEUTRAL)
     }
@@ -159,7 +164,9 @@ internal fun DashboardPanel(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
             trip.phase == TripPhase.FINISHED -> TripSummaryCard(state, formatter, actions)
+
             trip.phase == TripPhase.IDLE && gate != LocationGate.Ready -> LocationGateCard(gate, actions)
+
             else -> {
                 if (trip.phase == TripPhase.PAUSED && trip.recovered) RecoveredTripCard(state, formatter, actions)
                 if (gate != LocationGate.Ready) GateBanner(gate, actions)
@@ -233,10 +240,28 @@ internal fun TripStatsPanel(state: DashboardUiState, formatter: UiFormatter, mod
             SpeedStatTile(currentLabel, trip.currentSpeedMps, unit, formatter, tileModifier)
         },
         { tileModifier ->
-            SpeedStatTile(topLabel, stats.maxSpeedMps.takeIf { hasTrip }, unit, formatter, tileModifier, dimmed = !hasTrip)
+            SpeedStatTile(
+                topLabel,
+                stats.maxSpeedMps.takeIf {
+                    hasTrip
+                },
+                unit,
+                formatter,
+                tileModifier,
+                dimmed = !hasTrip,
+            )
         },
         { tileModifier ->
-            SpeedStatTile(averageLabel, stats.averageSpeedMps.takeIf { hasTrip }, unit, formatter, tileModifier, dimmed = !hasTrip)
+            SpeedStatTile(
+                averageLabel,
+                stats.averageSpeedMps.takeIf {
+                    hasTrip
+                },
+                unit,
+                formatter,
+                tileModifier,
+                dimmed = !hasTrip,
+            )
         },
     )
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -262,12 +287,38 @@ private fun gateAction(gate: LocationGate, actions: DashboardActions): GateActio
 @Composable
 internal fun LocationGateCard(gate: LocationGate, actions: DashboardActions, modifier: Modifier = Modifier) {
     val (icon, titleRes, bodyRes) = when (gate) {
-        LocationGate.NoGpsHardware -> Triple(WayneedleIcons.LocationOff, R.string.gate_no_gps_title, R.string.gate_no_gps_body)
-        LocationGate.NeedsRationale -> Triple(WayneedleIcons.Gps, R.string.gate_rationale_title, R.string.gate_rationale_body)
+        LocationGate.NoGpsHardware -> Triple(
+            WayneedleIcons.LocationOff,
+            R.string.gate_no_gps_title,
+            R.string.gate_no_gps_body,
+        )
+
+        LocationGate.NeedsRationale -> Triple(
+            WayneedleIcons.Gps,
+            R.string.gate_rationale_title,
+            R.string.gate_rationale_body,
+        )
+
         LocationGate.CanRequestAgain -> Triple(WayneedleIcons.Gps, R.string.gate_retry_title, R.string.gate_retry_body)
-        LocationGate.PermanentlyDenied -> Triple(WayneedleIcons.LocationOff, R.string.gate_blocked_title, R.string.gate_blocked_body)
-        LocationGate.ApproximateOnly -> Triple(WayneedleIcons.Gps, R.string.gate_approximate_title, R.string.gate_approximate_body)
-        LocationGate.GpsOff -> Triple(WayneedleIcons.LocationOff, R.string.gate_gps_off_title, R.string.gate_gps_off_body)
+
+        LocationGate.PermanentlyDenied -> Triple(
+            WayneedleIcons.LocationOff,
+            R.string.gate_blocked_title,
+            R.string.gate_blocked_body,
+        )
+
+        LocationGate.ApproximateOnly -> Triple(
+            WayneedleIcons.Gps,
+            R.string.gate_approximate_title,
+            R.string.gate_approximate_body,
+        )
+
+        LocationGate.GpsOff -> Triple(
+            WayneedleIcons.LocationOff,
+            R.string.gate_gps_off_title,
+            R.string.gate_gps_off_body,
+        )
+
         LocationGate.Ready -> return
     }
     val action = gateAction(gate, actions)
@@ -403,7 +454,11 @@ internal fun TripSummaryCard(
     val trip = state.trip
     val unit = state.unit
     val savedTripId = trip.savedTripId
-    Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainer) {
+    Surface(
+        modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 IconBadge(
@@ -484,6 +539,7 @@ internal fun TripControls(
                 modifier = modifier,
             )
         }
+
         TripPhase.RUNNING -> ExpressiveButtonRow(
             modifier = modifier,
             primary = { buttonModifier, source ->
@@ -511,6 +567,7 @@ internal fun TripControls(
                 )
             },
         )
+
         TripPhase.PAUSED -> Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             ExpressiveButtonRow(
                 primary = { buttonModifier, source ->
@@ -547,6 +604,7 @@ internal fun TripControls(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+
         TripPhase.FINISHED -> Unit
     }
 }
@@ -578,6 +636,7 @@ internal fun DashboardDialogs(state: DashboardUiState, formatter: UiFormatter, a
                 icon = WayneedleIcons.Flag,
             )
         }
+
         DashboardDialog.ConfirmDiscard -> ConfirmDialog(
             title = stringResource(R.string.dialog_discard_title),
             text = stringResource(R.string.dialog_discard_body),
@@ -588,6 +647,7 @@ internal fun DashboardDialogs(state: DashboardUiState, formatter: UiFormatter, a
             destructive = true,
             icon = WayneedleIcons.Delete,
         )
+
         DashboardDialog.SaveFailed -> ConfirmDialog(
             title = stringResource(R.string.dialog_save_failed_title),
             text = stringResource(R.string.dialog_save_failed_body),
@@ -597,6 +657,7 @@ internal fun DashboardDialogs(state: DashboardUiState, formatter: UiFormatter, a
             onDismiss = actions.onDismissDialog,
             icon = WayneedleIcons.Warning,
         )
+
         null -> Unit
     }
 }

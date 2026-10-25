@@ -14,13 +14,22 @@ class SpeedReadingTest {
 
     @Test
     fun `reason follows the order hardware permission approximate provider searching`() {
-        assertEquals(SpeedUnavailableReason.NO_GPS_HARDWARE, speedUnavailableReason(LocationPermissionState.DENIED, gpsOn, hasGpsHardware = false))
-        assertEquals(SpeedUnavailableReason.PERMISSION_REQUIRED, speedUnavailableReason(LocationPermissionState.DENIED, gpsOn, true))
+        assertEquals(
+            SpeedUnavailableReason.NO_GPS_HARDWARE,
+            speedUnavailableReason(LocationPermissionState.DENIED, gpsOn, hasGpsHardware = false),
+        )
+        assertEquals(
+            SpeedUnavailableReason.PERMISSION_REQUIRED,
+            speedUnavailableReason(LocationPermissionState.DENIED, gpsOn, true),
+        )
         assertEquals(
             SpeedUnavailableReason.APPROXIMATE_ONLY,
             speedUnavailableReason(LocationPermissionState.GRANTED_APPROXIMATE_ONLY, gpsOn, true),
         )
-        assertEquals(SpeedUnavailableReason.GPS_OFF, speedUnavailableReason(precise, GpsStatus(providerEnabled = false), true))
+        assertEquals(
+            SpeedUnavailableReason.GPS_OFF,
+            speedUnavailableReason(precise, GpsStatus(providerEnabled = false), true),
+        )
         assertEquals(SpeedUnavailableReason.SEARCHING, speedUnavailableReason(precise, gpsOn, true))
     }
 
@@ -40,7 +49,8 @@ class SpeedReadingTest {
 
     @Test
     fun `unavailable speed carries the reason and never becomes zero`() {
-        val reading = speedReading(LiveSpeed.Unavailable, SpeedUnit.KMH, precise, GpsStatus(providerEnabled = false), true)
+        val reading =
+            speedReading(LiveSpeed.Unavailable, SpeedUnit.KMH, precise, GpsStatus(providerEnabled = false), true)
         assertEquals(SpeedReading.Unavailable(SpeedUnavailableReason.GPS_OFF), reading)
     }
 

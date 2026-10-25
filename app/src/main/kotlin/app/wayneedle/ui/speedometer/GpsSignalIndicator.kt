@@ -111,7 +111,9 @@ private fun satelliteText(gps: GpsStatus, formatter: UiFormatter): String? {
     return when {
         used != null && inView != null && inView >= used ->
             stringResource(R.string.gps_satellites_used_of_view, formatter.count(used), formatter.count(inView))
+
         used != null -> pluralStringResource(R.plurals.gps_satellites_used, used, formatter.count(used))
+
         else -> null
     }
 }

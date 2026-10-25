@@ -96,9 +96,13 @@ fun TripDetailScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             when (state) {
-                TripDetailUiState.Loading, TripDetailUiState.Deleted -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                TripDetailUiState.Loading, TripDetailUiState.Deleted -> Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
                     if (state == TripDetailUiState.Loading) NeedleLoadingIndicator(size = 48.dp)
                 }
+
                 TripDetailUiState.NotFound -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     EmptyState(
                         icon = WayneedleIcons.Warning,
@@ -106,6 +110,7 @@ fun TripDetailScreen(
                         body = stringResource(R.string.trip_not_found_body),
                     )
                 }
+
                 is TripDetailUiState.Loaded -> TripDetailContent(state.trip, state.unit, formatter, onRequestDelete)
             }
         }
@@ -113,7 +118,10 @@ fun TripDetailScreen(
     if (loaded != null && loaded.confirmingDelete) {
         ConfirmDialog(
             title = stringResource(R.string.dialog_delete_trip_title),
-            text = stringResource(R.string.dialog_delete_trip_body, formatter.dateTime(loaded.trip.startedAtEpochMillis)),
+            text = stringResource(
+                R.string.dialog_delete_trip_body,
+                formatter.dateTime(loaded.trip.startedAtEpochMillis),
+            ),
             confirmLabel = stringResource(R.string.action_delete),
             dismissLabel = stringResource(R.string.action_cancel),
             onConfirm = onConfirmDelete,
@@ -160,7 +168,11 @@ private fun TripDetailContent(
                 repeat(columns - rowTiles.size) { Spacer(Modifier.weight(1f)) }
             }
         }
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DetailRow(stringResource(R.string.detail_started), formatter.dateTime(trip.startedAtEpochMillis))
                 DetailRow(stringResource(R.string.detail_finished), formatter.dateTime(trip.endedAtEpochMillis))

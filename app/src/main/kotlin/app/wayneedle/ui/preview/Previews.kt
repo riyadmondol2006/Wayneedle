@@ -130,19 +130,31 @@ internal fun DashboardSearchingPreview() = PreviewFrame {
 @PixelPreviews
 @Composable
 internal fun DashboardPermissionPreview() = PreviewFrame {
-    DashboardScreen(PreviewData.dashboard(PreviewData.permissionDenied), LocationGate.NeedsRationale, DashboardActions())
+    DashboardScreen(
+        PreviewData.dashboard(PreviewData.permissionDenied),
+        LocationGate.NeedsRationale,
+        DashboardActions(),
+    )
 }
 
 @PixelPreviews
 @Composable
 internal fun DashboardBlockedPreview() = PreviewFrame {
-    DashboardScreen(PreviewData.dashboard(PreviewData.permissionDenied), LocationGate.PermanentlyDenied, DashboardActions())
+    DashboardScreen(
+        PreviewData.dashboard(PreviewData.permissionDenied),
+        LocationGate.PermanentlyDenied,
+        DashboardActions(),
+    )
 }
 
 @PixelPreviews
 @Composable
 internal fun DashboardApproximatePreview() = PreviewFrame {
-    DashboardScreen(PreviewData.dashboard(PreviewData.approximateOnly), LocationGate.ApproximateOnly, DashboardActions())
+    DashboardScreen(
+        PreviewData.dashboard(PreviewData.approximateOnly),
+        LocationGate.ApproximateOnly,
+        DashboardActions(),
+    )
 }
 
 @PixelPreviews

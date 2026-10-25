@@ -111,15 +111,25 @@ class TrackingService : Service() {
         controller = dependencies.controller
         when (command) {
             ServiceCommand.PAUSE -> dependencies.controller.pauseTrip()
+
             ServiceCommand.RESUME -> dependencies.controller.resumeTrip()
-            ServiceCommand.NOTIFICATION_DISMISSED -> gate.onDismissedByUser(dependencies.controller.state.value.trip.phase)
+
+            ServiceCommand.NOTIFICATION_DISMISSED -> gate.onDismissedByUser(
+                dependencies.controller.state.value.trip.phase,
+            )
+
             ServiceCommand.START, ServiceCommand.UNKNOWN -> Unit
         }
         if (command == ServiceCommand.START) armStartGrace()
         val current = dependencies.controller.state.value.trip.phase
         val mustBeForeground = command == ServiceCommand.START || TrackingServicePolicy.shouldRun(current)
         if (mustBeForeground && !isForeground) {
-            if (!enterForeground(NotificationContent.placeholder(current, notifications.labels))) return START_NOT_STICKY
+            if (!enterForeground(
+                    NotificationContent.placeholder(current, notifications.labels),
+                )
+            ) {
+                return START_NOT_STICKY
+            }
         } else if (!isForeground) {
             stopSelf(startId)
             return START_NOT_STICKY
@@ -243,11 +253,13 @@ class TrackingService : Service() {
         while (isForeground) {
             when (val decision = gate.decide(content, SystemClock.elapsedRealtime())) {
                 NotificationUpdateGate.Decision.Skip -> return
+
                 NotificationUpdateGate.Decision.PostNow -> {
                     notifications.post(content)
                     gate.onPosted(content, SystemClock.elapsedRealtime())
                     return
                 }
+
                 is NotificationUpdateGate.Decision.PostAfter -> delay(decision.delayMillis)
             }
         }

@@ -103,6 +103,7 @@ fun ExpressiveButton(
             interactionSource = source,
             content = { content() },
         )
+
         ExpressiveButtonStyle.TONAL -> FilledTonalButton(
             onClick = onClick,
             modifier = buttonModifier,
@@ -112,6 +113,7 @@ fun ExpressiveButton(
             interactionSource = source,
             content = { content() },
         )
+
         ExpressiveButtonStyle.COMPLETE -> Button(
             onClick = onClick,
             modifier = buttonModifier,
@@ -125,6 +127,7 @@ fun ExpressiveButton(
             interactionSource = source,
             content = { content() },
         )
+
         ExpressiveButtonStyle.TEXT -> TextButton(
             onClick = onClick,
             modifier = buttonModifier,
@@ -133,6 +136,7 @@ fun ExpressiveButton(
             interactionSource = source,
             content = { content() },
         )
+
         ExpressiveButtonStyle.DESTRUCTIVE_TEXT -> TextButton(
             onClick = onClick,
             modifier = buttonModifier,

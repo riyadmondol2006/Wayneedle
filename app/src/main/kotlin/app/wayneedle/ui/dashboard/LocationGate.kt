@@ -41,12 +41,16 @@ fun resolveLocationGate(
     shouldShowRationale: Boolean,
 ): LocationGate = when {
     !hasGpsHardware -> LocationGate.NoGpsHardware
+
     permission == LocationPermissionState.DENIED -> when {
         !askedBefore -> LocationGate.NeedsRationale
         shouldShowRationale -> LocationGate.CanRequestAgain
         else -> LocationGate.PermanentlyDenied
     }
+
     permission == LocationPermissionState.GRANTED_APPROXIMATE_ONLY -> LocationGate.ApproximateOnly
+
     !providerEnabled -> LocationGate.GpsOff
+
     else -> LocationGate.Ready
 }

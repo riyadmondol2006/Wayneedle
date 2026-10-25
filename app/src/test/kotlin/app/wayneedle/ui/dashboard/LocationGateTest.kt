@@ -31,7 +31,10 @@ class LocationGateTest {
 
     @Test
     fun `denied with do not ask again needs the settings screen`() {
-        assertEquals(LocationGate.PermanentlyDenied, gate(LocationPermissionState.DENIED, asked = true, rationale = false))
+        assertEquals(
+            LocationGate.PermanentlyDenied,
+            gate(LocationPermissionState.DENIED, asked = true, rationale = false),
+        )
     }
 
     @Test

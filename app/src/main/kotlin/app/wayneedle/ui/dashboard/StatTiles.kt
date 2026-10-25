@@ -90,7 +90,13 @@ internal fun DurationStatTile(
     StatTile(
         label = label,
         value = if (millis == null) PLACEHOLDER else formatter.duration(millis),
-        spokenValue = if (millis == null) stringResource(R.string.spoken_no_value) else spokenDuration(millis, formatter),
+        spokenValue = if (millis ==
+            null
+        ) {
+            stringResource(R.string.spoken_no_value)
+        } else {
+            spokenDuration(millis, formatter)
+        },
         large = large,
         dimmed = dimmed,
         modifier = modifier,

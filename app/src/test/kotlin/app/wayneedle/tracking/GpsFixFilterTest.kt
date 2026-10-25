@@ -52,7 +52,10 @@ class GpsFixFilterTest {
 
     @Test
     fun `a rejected fix still advances the newest timestamp`() {
-        assertRejected(RejectReason.POOR_ACCURACY, evaluate(aSample(horizontalAccuracyM = 80f, elapsedRealtimeMillis = 3_000L)))
+        assertRejected(
+            RejectReason.POOR_ACCURACY,
+            evaluate(aSample(horizontalAccuracyM = 80f, elapsedRealtimeMillis = 3_000L)),
+        )
         assertRejected(
             RejectReason.NON_INCREASING_TIMESTAMP,
             evaluate(aSample(elapsedRealtimeMillis = 2_500L), nowMillis = 3_000L),
@@ -76,21 +79,42 @@ class GpsFixFilterTest {
 
     @Test
     fun `invalid coordinates are rejected`() {
-        assertRejected(RejectReason.INVALID_COORDINATES, evaluate(aSample(latitude = Double.NaN, elapsedRealtimeMillis = 1_000L)))
-        assertRejected(RejectReason.INVALID_COORDINATES, evaluate(aSample(latitude = 90.5, elapsedRealtimeMillis = 2_000L)))
-        assertRejected(RejectReason.INVALID_COORDINATES, evaluate(aSample(longitude = -180.5, elapsedRealtimeMillis = 3_000L)))
+        assertRejected(
+            RejectReason.INVALID_COORDINATES,
+            evaluate(aSample(latitude = Double.NaN, elapsedRealtimeMillis = 1_000L)),
+        )
+        assertRejected(
+            RejectReason.INVALID_COORDINATES,
+            evaluate(aSample(latitude = 90.5, elapsedRealtimeMillis = 2_000L)),
+        )
+        assertRejected(
+            RejectReason.INVALID_COORDINATES,
+            evaluate(aSample(longitude = -180.5, elapsedRealtimeMillis = 3_000L)),
+        )
     }
 
     @Test
     fun `missing or malformed horizontal accuracy is rejected`() {
-        assertRejected(RejectReason.MISSING_ACCURACY, evaluate(aSample(horizontalAccuracyM = null, elapsedRealtimeMillis = 1_000L)))
-        assertRejected(RejectReason.MISSING_ACCURACY, evaluate(aSample(horizontalAccuracyM = Float.NaN, elapsedRealtimeMillis = 2_000L)))
-        assertRejected(RejectReason.MISSING_ACCURACY, evaluate(aSample(horizontalAccuracyM = -1f, elapsedRealtimeMillis = 3_000L)))
+        assertRejected(
+            RejectReason.MISSING_ACCURACY,
+            evaluate(aSample(horizontalAccuracyM = null, elapsedRealtimeMillis = 1_000L)),
+        )
+        assertRejected(
+            RejectReason.MISSING_ACCURACY,
+            evaluate(aSample(horizontalAccuracyM = Float.NaN, elapsedRealtimeMillis = 2_000L)),
+        )
+        assertRejected(
+            RejectReason.MISSING_ACCURACY,
+            evaluate(aSample(horizontalAccuracyM = -1f, elapsedRealtimeMillis = 3_000L)),
+        )
     }
 
     @Test
     fun `horizontal accuracy worse than 25 m is rejected`() {
-        assertRejected(RejectReason.POOR_ACCURACY, evaluate(aSample(horizontalAccuracyM = 25.1f, elapsedRealtimeMillis = 1_000L)))
+        assertRejected(
+            RejectReason.POOR_ACCURACY,
+            evaluate(aSample(horizontalAccuracyM = 25.1f, elapsedRealtimeMillis = 1_000L)),
+        )
         assertAccepted(evaluate(aSample(horizontalAccuracyM = 25f, elapsedRealtimeMillis = 2_000L)))
     }
 
@@ -101,22 +125,37 @@ class GpsFixFilterTest {
 
     @Test
     fun `NaN infinite or negative speed is rejected`() {
-        assertRejected(RejectReason.INVALID_SPEED, evaluate(aSample(speedMps = Float.NaN, elapsedRealtimeMillis = 1_000L)))
-        assertRejected(RejectReason.INVALID_SPEED, evaluate(aSample(speedMps = Float.POSITIVE_INFINITY, elapsedRealtimeMillis = 2_000L)))
+        assertRejected(
+            RejectReason.INVALID_SPEED,
+            evaluate(aSample(speedMps = Float.NaN, elapsedRealtimeMillis = 1_000L)),
+        )
+        assertRejected(
+            RejectReason.INVALID_SPEED,
+            evaluate(aSample(speedMps = Float.POSITIVE_INFINITY, elapsedRealtimeMillis = 2_000L)),
+        )
         assertRejected(RejectReason.INVALID_SPEED, evaluate(aSample(speedMps = -0.1f, elapsedRealtimeMillis = 3_000L)))
     }
 
     @Test
     fun `poor speed accuracy is rejected only when reported`() {
-        assertRejected(RejectReason.POOR_SPEED_ACCURACY, evaluate(aSample(speedAccuracyMps = 3.1f, elapsedRealtimeMillis = 1_000L)))
-        assertRejected(RejectReason.POOR_SPEED_ACCURACY, evaluate(aSample(speedAccuracyMps = Float.NaN, elapsedRealtimeMillis = 2_000L)))
+        assertRejected(
+            RejectReason.POOR_SPEED_ACCURACY,
+            evaluate(aSample(speedAccuracyMps = 3.1f, elapsedRealtimeMillis = 1_000L)),
+        )
+        assertRejected(
+            RejectReason.POOR_SPEED_ACCURACY,
+            evaluate(aSample(speedAccuracyMps = Float.NaN, elapsedRealtimeMillis = 2_000L)),
+        )
         assertAccepted(evaluate(aSample(speedAccuracyMps = 3f, elapsedRealtimeMillis = 3_000L)))
         assertAccepted(evaluate(aSample(speedAccuracyMps = null, elapsedRealtimeMillis = 4_000L)))
     }
 
     @Test
     fun `speed above the physical cap is rejected`() {
-        assertRejected(RejectReason.SPEED_ABOVE_CAP, evaluate(aSample(speedMps = 150.5f, elapsedRealtimeMillis = 1_000L)))
+        assertRejected(
+            RejectReason.SPEED_ABOVE_CAP,
+            evaluate(aSample(speedMps = 150.5f, elapsedRealtimeMillis = 1_000L)),
+        )
         assertAccepted(evaluate(aSample(speedMps = 150f, elapsedRealtimeMillis = 2_000L)))
     }
 

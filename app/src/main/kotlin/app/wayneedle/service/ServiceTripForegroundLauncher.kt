@@ -29,8 +29,10 @@ private object LogLauncherEvents : LauncherEvents {
     override fun onStartResult(result: ForegroundStartResult) {
         when (result) {
             ForegroundStartResult.Started -> Unit
+
             ForegroundStartResult.SkippedNoLocationPermission ->
                 Log.w(TAG, "Not starting the tracking service: no location permission")
+
             is ForegroundStartResult.Failed ->
                 Log.w(TAG, "Tracking service start rejected: ${result.failure}", result.cause)
         }

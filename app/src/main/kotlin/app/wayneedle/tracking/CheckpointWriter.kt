@@ -78,7 +78,11 @@ internal class CheckpointWriter(
         } catch (e: CancellationException) {
             // Only a cancellation of the writer itself ends the loop; one thrown by the store is a failure.
             currentCoroutineContext().ensureActive()
-            if (op is Op.Load) op.result.completeExceptionally(IllegalStateException("Checkpoint load was cancelled", e))
+            if (op is Op.Load) {
+                op.result.completeExceptionally(
+                    IllegalStateException("Checkpoint load was cancelled", e),
+                )
+            }
         } catch (e: Exception) {
             if (op is Op.Load) op.result.completeExceptionally(e)
         }

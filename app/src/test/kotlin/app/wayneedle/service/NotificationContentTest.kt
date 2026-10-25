@@ -66,7 +66,8 @@ class NotificationContentTest {
 
     @Test
     fun `recording shows mph and miles`() {
-        val result = content(state(speedMps = 26.8224f, distanceMeters = 1_609.344, durationMillis = 61_000L), SpeedUnit.MPH)
+        val result =
+            content(state(speedMps = 26.8224f, distanceMeters = 1_609.344, durationMillis = 61_000L), SpeedUnit.MPH)
         assertEquals("60 mph · 1.00 mi · 1:01", result.text)
     }
 
@@ -112,7 +113,10 @@ class NotificationContentTest {
 
     @Test
     fun `paused omits speed and offers resume`() {
-        val result = content(state(phase = TripPhase.PAUSED, speedMps = 12f, distanceMeters = 3_421.6, durationMillis = 754_000L))
+        val result =
+            content(
+                state(phase = TripPhase.PAUSED, speedMps = 12f, distanceMeters = 3_421.6, durationMillis = 754_000L),
+            )
         assertEquals("Wayneedle – Paused", result.title)
         assertEquals("3.42 km · 12:34", result.text)
         assertEquals(NotificationAction.RESUME, result.action)
@@ -164,7 +168,11 @@ class NotificationContentTest {
 
     @Test
     fun `numbers follow the locale`() {
-        val result = content(state(speedMps = 10f, distanceMeters = 3_421.6, durationMillis = 3_661_000L), locale = Locale.GERMANY)
+        val result =
+            content(
+                state(speedMps = 10f, distanceMeters = 3_421.6, durationMillis = 3_661_000L),
+                locale = Locale.GERMANY,
+            )
         assertEquals("36 km/h · 3,42 km · 1:01:01", result.text)
         assertEquals("12,3 km", NotificationContent.formatDistance(12_345.0, SpeedUnit.KMH, labels, Locale.GERMANY))
     }
@@ -177,7 +185,10 @@ class NotificationContentTest {
         assertEquals(base, content(state(speedMps = 10.01f, distanceMeters = 100.4, durationMillis = 10_400L)))
         assertNotEquals(base, content(state(speedMps = 11f, distanceMeters = 100.0, durationMillis = 10_000L)))
         assertNotEquals(base, content(state(speedMps = 10f, distanceMeters = 100.0, durationMillis = 11_000L)))
-        assertNotEquals(base, content(state(phase = TripPhase.PAUSED, distanceMeters = 100.0, durationMillis = 10_000L)))
+        assertNotEquals(
+            base,
+            content(state(phase = TripPhase.PAUSED, distanceMeters = 100.0, durationMillis = 10_000L)),
+        )
     }
 
     @Test
@@ -199,5 +210,10 @@ class NotificationContentTest {
 
     private fun speedText(mps: Float): String = content(state(speedMps = mps)).text.substringBefore(" · ")
 
-    private fun distanceText(meters: Double): String = NotificationContent.formatDistance(meters, SpeedUnit.KMH, labels, Locale.US)
+    private fun distanceText(meters: Double): String = NotificationContent.formatDistance(
+        meters,
+        SpeedUnit.KMH,
+        labels,
+        Locale.US,
+    )
 }

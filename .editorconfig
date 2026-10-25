@@ -27,7 +27,3 @@ ij_kotlin_packages_to_use_import_on_demand = java.util.*,androidx.compose.**
 # One-parameter-per-line declarations and long Compose signatures are written by hand, not collapsed.
 ktlint_standard_class-signature = disabled
 ktlint_standard_function-signature = disabled
-
-# TODO: domain/TrackingController.kt has unsorted imports. Delete this override once they are sorted.
-[**/app/wayneedle/domain/TrackingController.kt]
-ktlint_standard_import-ordering = disabled

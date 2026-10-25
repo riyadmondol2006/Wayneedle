@@ -15,9 +15,9 @@ import app.wayneedle.domain.model.TrackingState
 import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.ui.STOP_TIMEOUT_MILLIS
-import app.wayneedle.ui.wayneedleApplication
 import app.wayneedle.ui.speedometer.GaugeScale
 import app.wayneedle.ui.speedometer.speedReading
+import app.wayneedle.ui.wayneedleApplication
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow

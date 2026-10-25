@@ -1,6 +1,5 @@
 package app.wayneedle.ui
 
-import android.graphics.Color as AndroidColor
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.LocalActivity
@@ -44,6 +43,7 @@ import app.wayneedle.ui.navigation.Destination
 import app.wayneedle.ui.navigation.WayneedleNavHost
 import app.wayneedle.ui.theme.WayneedleTheme
 import app.wayneedle.ui.theme.isDark
+import android.graphics.Color as AndroidColor
 
 private const val RAIL_MIN_WIDTH_DP = 600
 private val LightScrim = AndroidColor.argb(0xE6, 0xFF, 0xFF, 0xFF)
@@ -95,7 +95,9 @@ private fun WayneedleScaffold() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val hierarchy = backStackEntry?.destination?.hierarchy
-    val selectedRoute = Destination.topLevel.firstOrNull { item -> hierarchy?.any { it.route == item.route } == true }?.route
+    val selectedRoute = Destination.topLevel.firstOrNull { item ->
+        hierarchy?.any { it.route == item.route } == true
+    }?.route
     val showNavigation = selectedRoute != null
 
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -104,7 +106,9 @@ private fun WayneedleScaffold() {
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             // Top insets are left to each screen so app bars can extend behind the status bar.
-            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            contentWindowInsets = WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+            ),
             bottomBar = {
                 if (showNavigation && !useRail) {
                     WayneedleNavigationBar(

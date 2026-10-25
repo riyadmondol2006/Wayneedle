@@ -7,8 +7,14 @@ import kotlin.test.assertEquals
 class PermissionMappingTest {
     @Test
     fun `fine location is precise`() {
-        assertEquals(LocationPermissionState.GRANTED_PRECISE, mapLocationPermission(fineGranted = true, coarseGranted = true))
-        assertEquals(LocationPermissionState.GRANTED_PRECISE, mapLocationPermission(fineGranted = true, coarseGranted = false))
+        assertEquals(
+            LocationPermissionState.GRANTED_PRECISE,
+            mapLocationPermission(fineGranted = true, coarseGranted = true),
+        )
+        assertEquals(
+            LocationPermissionState.GRANTED_PRECISE,
+            mapLocationPermission(fineGranted = true, coarseGranted = false),
+        )
     }
 
     @Test
@@ -27,10 +33,25 @@ class PermissionMappingTest {
     fun `notification visibility`() {
         val none = 0
         val low = 2
-        assertEquals(TripNotificationVisibility.VISIBLE, classifyNotificationVisibility(appEnabled = true, channelImportance = low))
-        assertEquals(TripNotificationVisibility.VISIBLE, classifyNotificationVisibility(appEnabled = true, channelImportance = null))
-        assertEquals(TripNotificationVisibility.APP_BLOCKED, classifyNotificationVisibility(appEnabled = false, channelImportance = low))
-        assertEquals(TripNotificationVisibility.APP_BLOCKED, classifyNotificationVisibility(appEnabled = false, channelImportance = null))
-        assertEquals(TripNotificationVisibility.CHANNEL_BLOCKED, classifyNotificationVisibility(appEnabled = true, channelImportance = none))
+        assertEquals(
+            TripNotificationVisibility.VISIBLE,
+            classifyNotificationVisibility(appEnabled = true, channelImportance = low),
+        )
+        assertEquals(
+            TripNotificationVisibility.VISIBLE,
+            classifyNotificationVisibility(appEnabled = true, channelImportance = null),
+        )
+        assertEquals(
+            TripNotificationVisibility.APP_BLOCKED,
+            classifyNotificationVisibility(appEnabled = false, channelImportance = low),
+        )
+        assertEquals(
+            TripNotificationVisibility.APP_BLOCKED,
+            classifyNotificationVisibility(appEnabled = false, channelImportance = null),
+        )
+        assertEquals(
+            TripNotificationVisibility.CHANNEL_BLOCKED,
+            classifyNotificationVisibility(appEnabled = true, channelImportance = none),
+        )
     }
 }
