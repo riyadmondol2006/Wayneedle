@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Wayneedle is fully offline: there is intentionally NO INTERNET permission. -->
+    <!-- Not "required": the app installs on GPS-less devices and shows an explicit "no GPS" state. -->
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".WayneedleApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Wayneedle">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".service.TrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+    </application>
+</manifest>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trip data is private: never uploaded to cloud backup. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+</data-extraction-rules>

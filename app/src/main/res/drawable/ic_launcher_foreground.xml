@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder needle mark; replaced by the UI workstream. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF6B35"
+        android:pathData="M54,24 L60,58 L54,66 L48,58 Z" />
+    <path
+        android:fillColor="#E6E1E5"
+        android:pathData="M54,60m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+</vector>
