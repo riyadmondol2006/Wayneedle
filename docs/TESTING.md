@@ -253,6 +253,8 @@ record device serial numbers, coordinates or GPS tracks.
 |---|---|---|---|---|---|
 | 2026-10-26 | adb4420 | Pixel 6 Pro, Android 17 (API 37.1), build CP3A.261005.002.A1, locale en-PT | Full instrumentation suite (`am instrument`), 86 tests | Pass (86/86) | Indoors, no satellite fix. Location was mock-driven; see "Running the instrumentation tests". |
 | 2026-10-26 | adb4420 | same | Manual: first launch, permission flow, idle/running/paused/finished dashboard, History, Settings, delete-all, with mock-driven fixes | Pass | Visual check by screenshot. Real GNSS status was live ("0 of 4 satellites") but no fix indoors. |
+| 2026-10-26 | 2c7c796 | same | Full instrumentation suite (`am instrument`), 86 tests | Pass (86/86) | Same scripted-fix setup as above. Two UI tests gained a total-time assertion. |
+| 2026-10-26 | 2c7c796 | same | Manual: Start, 10 s running, Pause, wait, Finish, trip details, delete; also force-stop while paused (recovery) | Pass | No GPS fix indoors, so distance stayed 0. Active time froze at the Pause tap while total time kept counting, and the saved total stayed fixed. Found and fixed a clipped total-time tile in the paused layout. |
 
 ## Continuous integration
 
