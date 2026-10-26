@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.wayneedle.domain.CommandResult
 import app.wayneedle.ui.permission.rememberLocationAccess
+import app.wayneedle.ui.permission.rememberNotificationAccess
 import app.wayneedle.ui.permission.rememberNotificationRequester
 
 /** Connects [DashboardViewModel] and the platform (permissions, settings screens) to [DashboardScreen]. */
@@ -25,7 +26,8 @@ fun DashboardRoute(
         onPermissionResult = viewModel::refreshEnvironment,
     )
     val requestNotifications = rememberNotificationRequester()
-    val actions = remember(viewModel, access, requestNotifications, onOpenTrip) {
+    val notifications = rememberNotificationAccess()
+    val actions = remember(viewModel, access, requestNotifications, notifications, onOpenTrip) {
         DashboardActions(
             onStart = {
                 if (viewModel.startTrip() is CommandResult.Ok) requestNotifications()
@@ -42,7 +44,13 @@ fun DashboardRoute(
             onRequestPermission = access.requestPermission,
             onOpenAppSettings = access.openAppSettings,
             onOpenLocationSettings = access.openLocationSettings,
+            onOpenNotificationSettings = notifications.openSettings,
         )
     }
-    DashboardScreen(state = state, gate = access.gate, actions = actions, modifier = modifier)
+    DashboardScreen(
+        state = state.copy(notificationsBlocked = notifications.blocked),
+        gate = access.gate,
+        actions = actions,
+        modifier = modifier,
+    )
 }

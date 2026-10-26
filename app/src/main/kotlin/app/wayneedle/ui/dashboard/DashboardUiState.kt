@@ -54,6 +54,10 @@ data class DashboardUiState(
     val dialog: DashboardDialog? = null,
     /** True while a Finish is being saved; commands are disabled meanwhile. */
     val isFinishing: Boolean = false,
+    /** The active trip records only while the app is visible (Android refused the foreground service). */
+    val backgroundRecordingUnavailable: Boolean = false,
+    /** Notifications are blocked, so the trip notification and its actions are hidden (set by the route). */
+    val notificationsBlocked: Boolean = false,
 ) {
     val isTripActive: Boolean get() = trip.phase == TripPhase.RUNNING || trip.phase == TripPhase.PAUSED
 }

@@ -2,6 +2,7 @@ package app.wayneedle.ui.format
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import app.wayneedle.R
 import app.wayneedle.domain.model.SpeedUnit
 import kotlin.math.roundToInt
@@ -10,6 +11,8 @@ import kotlin.math.roundToInt
 
 @Composable
 fun spokenSpeed(metersPerSecond: Float, unit: SpeedUnit, formatter: UiFormatter): String {
+    // A corrupt stored value must never crash the screen (roundToInt throws on NaN).
+    if (!metersPerSecond.isFinite()) return stringResource(R.string.spoken_no_value)
     val rounded = unit.fromMetersPerSecond(metersPerSecond.coerceAtLeast(0f).toDouble()).roundToInt()
     return pluralStringResource(unit.speedSpokenRes, rounded, formatter.speed(metersPerSecond, unit))
 }

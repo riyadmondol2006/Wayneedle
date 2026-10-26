@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -97,6 +98,13 @@ class TrackingNotificationInstrumentedTest {
         assertTrue(result is ForegroundStartResult.Started || result is ForegroundStartResult.Failed)
         launcher.stop()
         launcher.stop()
+        // With no trip the service leaves the foreground on its own after its start grace period. Wait for it,
+        // so later tests that check TrackingServiceStatus (process-wide) start from a clean state.
+        val deadline = SystemClock.elapsedRealtime() + SERVICE_SETTLE_TIMEOUT_MS
+        while (TrackingServiceStatus.isInForeground && SystemClock.elapsedRealtime() < deadline) {
+            SystemClock.sleep(POLL_MS)
+        }
+        assertFalse("the idle service must stop itself", TrackingServiceStatus.isInForeground)
     }
 
     @Test
@@ -108,5 +116,10 @@ class TrackingNotificationInstrumentedTest {
             coarseGranted = granted(Manifest.permission.ACCESS_COARSE_LOCATION),
         )
         assertEquals(expected, AndroidLocationPermissionChecker(context).current())
+    }
+
+    private companion object {
+        const val SERVICE_SETTLE_TIMEOUT_MS = 10_000L
+        const val POLL_MS = 100L
     }
 }

@@ -341,4 +341,27 @@ class TripTrackerPersistenceTest {
         h.tracker.dismissFinished()
         assertEquals(5, h.foreground.calls.size)
     }
+
+    @Test
+    fun `a refused foreground service is reported until a retry succeeds or the trip ends`() = runTest {
+        val h = TrackerHarness(this)
+        h.showUi()
+        h.foreground.startAccepted = false
+        assertEquals(CommandResult.Ok, h.tracker.startTrip(), "the trip still records while the app is visible")
+        assertTrue(h.state.backgroundRecordingUnavailable)
+
+        h.tracker.pauseTrip()
+        h.foreground.startAccepted = true
+        h.tracker.resumeTrip()
+        assertFalse(h.state.backgroundRecordingUnavailable, "resume retried and Android accepted")
+
+        // The service itself is refused later (asynchronously).
+        h.tracker.reportBackgroundRecordingUnavailable()
+        assertTrue(h.state.backgroundRecordingUnavailable)
+        h.tracker.discardTrip()
+        assertFalse(h.state.backgroundRecordingUnavailable)
+
+        h.tracker.reportBackgroundRecordingUnavailable()
+        assertFalse(h.state.backgroundRecordingUnavailable, "no trip, nothing to warn about")
+    }
 }

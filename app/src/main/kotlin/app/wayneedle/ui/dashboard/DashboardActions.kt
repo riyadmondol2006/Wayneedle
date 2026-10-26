@@ -18,4 +18,5 @@ class DashboardActions(
     val onRequestPermission: () -> Unit = {},
     val onOpenAppSettings: () -> Unit = {},
     val onOpenLocationSettings: () -> Unit = {},
+    val onOpenNotificationSettings: () -> Unit = {},
 )

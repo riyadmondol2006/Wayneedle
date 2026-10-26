@@ -176,8 +176,12 @@ class InMemoryCheckpointStore(initial: TripCheckpoint? = null) : TripCheckpointS
 class RecordingForegroundLauncher : TripForegroundLauncher {
     val calls: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    override fun start() {
+    /** What the platform answers to a start request. */
+    var startAccepted = true
+
+    override fun start(): Boolean {
         calls += "start"
+        return startAccepted
     }
 
     override fun stop() {

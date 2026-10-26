@@ -135,6 +135,9 @@
     <string name="gate_action_open_app_settings">Open app settings</string>
     <string name="gate_action_turn_on_location">Turn on location</string>
     <string name="gate_banner_gps_off">GPS is off. Speed and distance are not being measured.</string>
+    <string name="banner_background_unavailable">Android didn’t allow recording in the background, so this trip records only while Wayneedle is on screen. Pause and resume to try again.</string>
+    <string name="banner_notifications_off">Notifications are off, so the recording notification and its Pause button are hidden.</string>
+    <string name="action_turn_on">Turn on</string>
     <string name="gate_banner_permission">Precise location access is missing. Speed and distance are not being measured.</string>
 
     <!-- Dialogs -->

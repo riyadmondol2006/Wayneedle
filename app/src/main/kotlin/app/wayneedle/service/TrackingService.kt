@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.ServiceCompat
@@ -120,7 +121,11 @@ class TrackingService : Service() {
 
             ServiceCommand.START, ServiceCommand.UNKNOWN -> Unit
         }
-        if (command == ServiceCommand.START) armStartGrace()
+        if (command == ServiceCommand.START) {
+            // An instance that outlived the previous trip must not carry its notification state over.
+            if (!isForeground) gate.reset()
+            armStartGrace()
+        }
         val current = dependencies.controller.state.value.trip.phase
         val mustBeForeground = command == ServiceCommand.START || TrackingServicePolicy.shouldRun(current)
         if (mustBeForeground && !isForeground) {
@@ -178,6 +183,9 @@ class TrackingService : Service() {
         TrackingServiceStatus.record(result)
         return if (result is ForegroundStartResult.Failed) {
             Log.w(TAG, "Could not enter the foreground: ${result.failure}", result.cause)
+            // The trip keeps recording while the app is visible; the dashboard tells the user why it stops
+            // in the background.
+            controller?.reportBackgroundRecordingUnavailable()
             stopCleanly()
             false
         } else {
@@ -253,7 +261,7 @@ class TrackingService : Service() {
     /** Applies [NotificationUpdateGate]: skips unchanged content, delays to at most one update per second. */
     private suspend fun postWhenAllowed(content: NotificationContent) {
         while (isForeground) {
-            when (val decision = gate.decide(content, SystemClock.elapsedRealtime())) {
+            when (val decision = gate.decide(content, SystemClock.elapsedRealtime(), isScreenOn())) {
                 NotificationUpdateGate.Decision.Skip -> return
 
                 NotificationUpdateGate.Decision.PostNow -> {
@@ -266,6 +274,8 @@ class TrackingService : Service() {
             }
         }
     }
+
+    private fun isScreenOn(): Boolean = getSystemService(PowerManager::class.java)?.isInteractive ?: true
 
     private fun handleTimeout() {
         Log.w(TAG, "Foreground service timeout; pausing the trip and leaving the foreground")

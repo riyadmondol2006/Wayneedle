@@ -16,6 +16,11 @@ internal class UiPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_LOCATION_REQUESTED, false)
         set(value) = prefs.edit { putBoolean(KEY_LOCATION_REQUESTED, value) }
 
+    /** `shouldShowRequestPermissionRationale` was true at least once since precise location was last granted. */
+    var locationRationaleSeen: Boolean
+        get() = prefs.getBoolean(KEY_LOCATION_RATIONALE_SEEN, false)
+        set(value) = prefs.edit { putBoolean(KEY_LOCATION_RATIONALE_SEEN, value) }
+
     var notificationsRequested: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATIONS_REQUESTED, false)
         set(value) = prefs.edit { putBoolean(KEY_NOTIFICATIONS_REQUESTED, value) }
@@ -24,5 +29,6 @@ internal class UiPreferences(context: Context) {
         const val FILE = "wayneedle_ui"
         const val KEY_LOCATION_REQUESTED = "location_requested"
         const val KEY_NOTIFICATIONS_REQUESTED = "notifications_requested"
+        const val KEY_LOCATION_RATIONALE_SEEN = "location_rationale_seen"
     }
 }

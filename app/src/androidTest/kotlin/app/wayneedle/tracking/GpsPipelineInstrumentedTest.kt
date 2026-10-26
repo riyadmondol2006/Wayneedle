@@ -65,8 +65,9 @@ class GpsPipelineInstrumentedTest {
 
         @Volatile var stops = 0
 
-        override fun start() {
+        override fun start(): Boolean {
             starts++
+            return true
         }
 
         override fun stop() {

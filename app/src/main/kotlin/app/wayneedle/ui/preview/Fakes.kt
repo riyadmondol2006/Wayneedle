@@ -22,8 +22,13 @@ import kotlinx.coroutines.flow.update
 /**
  * An in-memory [TrackingController] for previews and tests: a minimal copy of the documented state machine
  * with every command recorded in [commands]. Results can be forced through the `*Result` properties.
+ *
+ * @param tripRepository where a successful [finishTrip] stores the trip, like the real tracker; optional.
  */
-class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : TrackingController {
+class FakeTrackingController(
+    initial: TrackingState = TrackingState.Initial,
+    private val tripRepository: TripRepository? = null,
+) : TrackingController {
     private val mutableState = MutableStateFlow(initial)
     override val state: StateFlow<TrackingState> = mutableState.asStateFlow()
 
@@ -86,6 +91,7 @@ class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : T
         }
         val result = finishHandler(current)
         if (result is FinishResult.Saved) {
+            tripRepository?.saveTrip(result.trip)
             mutableState.update { it.copy(trip = it.trip.copy(phase = TripPhase.FINISHED, awaitingFix = false)) }
         }
         return result
@@ -110,6 +116,11 @@ class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : T
 
     override fun refreshEnvironment() {
         commands += "refreshEnvironment"
+    }
+
+    override fun reportBackgroundRecordingUnavailable() {
+        commands += "reportBackgroundRecordingUnavailable"
+        mutableState.update { it.copy(backgroundRecordingUnavailable = true) }
     }
 
     override suspend fun recoverInterruptedTrip(): Boolean {

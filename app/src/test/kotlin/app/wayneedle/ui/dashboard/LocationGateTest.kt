@@ -11,7 +11,8 @@ class LocationGateTest {
         hasGps: Boolean = true,
         asked: Boolean = false,
         rationale: Boolean = false,
-    ) = resolveLocationGate(permission, providerEnabled, hasGps, asked, rationale)
+        stoppedAsking: Boolean = false,
+    ) = resolveLocationGate(permission, providerEnabled, hasGps, asked, rationale, stoppedAsking)
 
     @Test
     fun `no GPS hardware wins over everything`() {
@@ -33,7 +34,16 @@ class LocationGateTest {
     fun `denied with do not ask again needs the settings screen`() {
         assertEquals(
             LocationGate.PermanentlyDenied,
-            gate(LocationPermissionState.DENIED, asked = true, rationale = false),
+            gate(LocationPermissionState.DENIED, asked = true, rationale = false, stoppedAsking = true),
+        )
+    }
+
+    @Test
+    fun `a dismissed dialog is not mistaken for do not ask again`() {
+        // Back or a tap outside the dialog: no answer, rationale still false, but Android will ask again.
+        assertEquals(
+            LocationGate.CanRequestAgain,
+            gate(LocationPermissionState.DENIED, asked = true, rationale = false, stoppedAsking = false),
         )
     }
 

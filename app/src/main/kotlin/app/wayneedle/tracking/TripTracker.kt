@@ -109,6 +109,7 @@ class TripTracker(
     private var liveSpeed: LiveSpeed = LiveSpeed.Unavailable
     private var uiVisible = false
     private var finishing = false
+    private var backgroundRecordingUnavailable = false
     private var tripGeneration = 0L
     private var lastCheckpointActiveMillis = 0L
     private var jobIds = NO_JOB
@@ -150,7 +151,7 @@ class TripTracker(
             val now = nowNanos()
             engine.start(UUID.randomUUID().toString(), now, timeSource.epochMillis())
             tripGeneration++
-            foreground.start()
+            backgroundRecordingUnavailable = !foreground.start()
             writeCheckpointLocked(now)
             updateListenerLocked()
             publishLocked(now)
@@ -184,8 +185,9 @@ class TripTracker(
             }
             val now = nowNanos()
             engine.resume(now)
-            // Idempotent; needed because a recovered trip resumes without a running service.
-            foreground.start()
+            // Idempotent; needed because a recovered trip resumes without a running service. Also the retry
+            // after Android refused the service.
+            backgroundRecordingUnavailable = !foreground.start()
             writeCheckpointLocked(now)
             updateListenerLocked()
             publishLocked(now)
@@ -235,6 +237,7 @@ class TripTracker(
                     val now = nowNanos()
                     engine.finish(now)
                     tripGeneration++
+                    backgroundRecordingUnavailable = false
                     checkpoints.clear()
                     foreground.stop()
                     updateListenerLocked()
@@ -263,6 +266,7 @@ class TripTracker(
             engine.tripId?.let(discardedTripIds::add)
             engine.discard()
             tripGeneration++
+            backgroundRecordingUnavailable = false
             checkpoints.clear()
             foreground.stop()
             updateListenerLocked()
@@ -290,6 +294,15 @@ class TripTracker(
         lock.withLock {
             permission = permissionChecker.current()
             updateListenerLocked()
+            publishLocked()
+        }
+    }
+
+    override fun reportBackgroundRecordingUnavailable() {
+        lock.withLock {
+            val phase = engine.phase
+            if (phase != TripPhase.RUNNING && phase != TripPhase.PAUSED) return
+            backgroundRecordingUnavailable = true
             publishLocked()
         }
     }
@@ -537,6 +550,7 @@ class TripTracker(
             ),
             liveSpeed = liveSpeed,
             trip = engine.snapshot(now),
+            backgroundRecordingUnavailable = backgroundRecordingUnavailable,
         )
     }
 

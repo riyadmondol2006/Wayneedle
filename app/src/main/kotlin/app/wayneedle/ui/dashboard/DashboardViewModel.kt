@@ -10,6 +10,7 @@ import app.wayneedle.domain.FinishResult
 import app.wayneedle.domain.SettingsRepository
 import app.wayneedle.domain.TimeSource
 import app.wayneedle.domain.TrackingController
+import app.wayneedle.domain.TripRepository
 import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TrackingState
@@ -27,11 +28,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,27 +44,57 @@ import kotlinx.coroutines.withContext
 /**
  * State and commands of the dashboard. It only observes [TrackingController.state] and forwards commands;
  * the controller owns the trip, so leaving the screen never touches an active trip.
+ *
+ * **Double taps.** The trip buttons swap places when the phase changes (Start becomes Pause, Pause becomes
+ * Resume), so the second tap of a double tap would land on the new button and undo the first. Trip commands
+ * arriving within [DOUBLE_TAP_GUARD_MILLIS] of the last phase change made here are ignored.
  */
 class DashboardViewModel(
     private val controller: TrackingController,
     settingsRepository: SettingsRepository,
+    private val tripRepository: TripRepository,
     private val timeSource: TimeSource,
     private val hasGpsHardware: Boolean,
 ) : ViewModel() {
     private data class Local(
         val dialog: DashboardDialog? = null,
         val isFinishing: Boolean = false,
+        /** The trip this screen just saved; shown until storage has been read. */
         val savedTrip: Trip? = null,
     )
+
+    /** The stored copy of the trip the controller reports as FINISHED. */
+    private sealed interface FinishedTrip {
+        data object None : FinishedTrip
+
+        data object Pending : FinishedTrip
+
+        /** [trip] is null when it was deleted meanwhile or cannot be read. */
+        data class Stored(val trip: Trip?) : FinishedTrip
+    }
 
     private data class Inputs(
         val state: TrackingState,
         val unit: SpeedUnit,
         val local: Local,
         val nowEpochMillis: Long,
-    )
+        val finished: FinishedTrip,
+    ) {
+        val savedTrip: Trip?
+            get() = when (finished) {
+                FinishedTrip.None -> null
+                FinishedTrip.Pending -> local.savedTrip?.takeIf { it.id == state.trip.tripId }
+                is FinishedTrip.Stored -> finished.trip
+            }
+    }
 
     private val local = MutableStateFlow(Local())
+
+    /** Grows with the fastest speed shown and never shrinks back, also when the screen subscribes again. */
+    private var gaugeScale = GaugeScale.base(SpeedUnit.KMH)
+
+    /** Elapsed-realtime nanos of the last phase change requested here, for the double-tap guard. */
+    private var lastPhaseChangeNanos: Long? = null
 
     /**
      * Wall-clock readings for the total trip time. It ticks once a second while a trip is RUNNING or PAUSED:
@@ -80,55 +114,82 @@ class DashboardViewModel(
             }
         }
 
-    val uiState: StateFlow<DashboardUiState> = flow {
-        var scale = GaugeScale.base(SpeedUnit.KMH)
-        combine(
-            controller.state,
-            settingsRepository.settings.map { it.speedUnit }.distinctUntilChanged(),
-            local,
-            clock,
-        ) { state, unit, local, now -> Inputs(state, unit, local, now) }
-            .collect { (state, unit, local, now) ->
-                scale = scale.extendedFor(unit, displayedSpeed(state, unit))
-                emit(
-                    buildUiState(
-                        state,
-                        unit,
-                        scale,
-                        local.dialog,
-                        local.isFinishing,
-                        local.savedTrip,
-                        hasGpsHardware,
-                        now,
-                    ),
-                )
+    /**
+     * The summary reads the saved trip from storage, so it survives this view model being recreated (the
+     * app was closed and reopened on the summary) and notices when the trip was deleted from History.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val finishedTrip: Flow<FinishedTrip> = controller.state
+        .map { state -> state.trip.tripId.takeIf { state.trip.phase == TripPhase.FINISHED } }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(FinishedTrip.None)
+            } else {
+                tripRepository.observeTrip(id)
+                    .map<Trip?, FinishedTrip> { FinishedTrip.Stored(it) }
+                    .onStart { emit(FinishedTrip.Pending) }
+                    .catch { emit(FinishedTrip.Stored(null)) }
             }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-        initialValue = buildUiState(
-            state = controller.state.value,
-            unit = SpeedUnit.KMH,
-            scale = GaugeScale.base(SpeedUnit.KMH),
-            dialog = null,
-            isFinishing = false,
-            savedTrip = null,
-            hasGpsHardware = hasGpsHardware,
-            nowEpochMillis = timeSource.epochMillis(),
-        ),
-    )
+        }
 
-    fun startTrip(): CommandResult = controller.startTrip().also(::refreshWhenBlocked)
+    val uiState: StateFlow<DashboardUiState> = combine(
+        controller.state,
+        settingsRepository.settings.map { it.speedUnit }.distinctUntilChanged(),
+        local,
+        clock,
+        finishedTrip,
+    ) { state, unit, local, now, finished -> Inputs(state, unit, local, now, finished) }
+        .map { inputs ->
+            gaugeScale = gaugeScale.extendedFor(inputs.unit, displayedSpeed(inputs.state, inputs.unit))
+            buildUiState(
+                state = inputs.state,
+                unit = inputs.unit,
+                scale = gaugeScale,
+                dialog = inputs.local.dialog,
+                isFinishing = inputs.local.isFinishing,
+                savedTrip = inputs.savedTrip,
+                hasGpsHardware = hasGpsHardware,
+                nowEpochMillis = inputs.nowEpochMillis,
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = buildUiState(
+                state = controller.state.value,
+                unit = SpeedUnit.KMH,
+                scale = GaugeScale.base(SpeedUnit.KMH),
+                dialog = null,
+                isFinishing = false,
+                savedTrip = null,
+                hasGpsHardware = hasGpsHardware,
+                nowEpochMillis = timeSource.epochMillis(),
+            ),
+        )
 
-    fun pauseTrip() {
-        controller.pauseTrip()
+    fun startTrip(): CommandResult {
+        if (isSecondTapOfDoubleTap()) return CommandResult.InvalidTransition(controller.state.value.trip.phase)
+        return controller.startTrip().also(::onPhaseCommand)
     }
 
-    fun resumeTrip(): CommandResult = controller.resumeTrip().also(::refreshWhenBlocked)
+    fun pauseTrip() {
+        if (isSecondTapOfDoubleTap()) return
+        onPhaseCommand(controller.pauseTrip())
+    }
 
-    fun requestFinish() = openDialogIfActive(DashboardDialog.ConfirmFinish)
+    fun resumeTrip(): CommandResult {
+        if (isSecondTapOfDoubleTap()) return CommandResult.InvalidTransition(controller.state.value.trip.phase)
+        return controller.resumeTrip().also(::onPhaseCommand)
+    }
 
-    fun requestDiscard() = openDialogIfActive(DashboardDialog.ConfirmDiscard)
+    fun requestFinish() {
+        if (!isSecondTapOfDoubleTap()) openDialogIfActive(DashboardDialog.ConfirmFinish)
+    }
+
+    fun requestDiscard() {
+        if (!isSecondTapOfDoubleTap()) openDialogIfActive(DashboardDialog.ConfirmDiscard)
+    }
 
     fun dismissDialog() = local.update { it.copy(dialog = null) }
 
@@ -147,6 +208,7 @@ class DashboardViewModel(
                     FinishResult.SaveFailed(failure)
                 }
             }
+            if (result is FinishResult.Saved) markPhaseChange()
             local.update {
                 when (result) {
                     is FinishResult.Saved -> it.copy(isFinishing = false, savedTrip = result.trip)
@@ -159,12 +221,13 @@ class DashboardViewModel(
 
     fun confirmDiscard() {
         local.update { it.copy(dialog = null) }
-        controller.discardTrip()
+        if (controller.discardTrip() == CommandResult.Ok) markPhaseChange()
     }
 
     /** Leaves the trip summary so a new trip can start. */
     fun dismissFinished() {
         controller.dismissFinished()
+        markPhaseChange()
         local.update { it.copy(savedTrip = null) }
     }
 
@@ -178,15 +241,29 @@ class DashboardViewModel(
         }
     }
 
-    /** A rejected start/resume means our picture of the environment was stale; refresh so the gate card shows. */
-    private fun refreshWhenBlocked(result: CommandResult) {
+    private fun onPhaseCommand(result: CommandResult) {
+        if (result == CommandResult.Ok) markPhaseChange()
+        // A rejected start/resume means our picture of the environment was stale; refresh so the gate card shows.
         if (result is CommandResult.PermissionRequired || result is CommandResult.LocationDisabled) {
             controller.refreshEnvironment()
         }
     }
 
+    private fun markPhaseChange() {
+        lastPhaseChangeNanos = timeSource.elapsedRealtimeNanos()
+    }
+
+    private fun isSecondTapOfDoubleTap(): Boolean {
+        val last = lastPhaseChangeNanos ?: return false
+        return timeSource.elapsedRealtimeNanos() - last < DOUBLE_TAP_GUARD_MILLIS * NANOS_PER_MILLI
+    }
+
     companion object {
         private const val CLOCK_TICK_MILLIS = 1_000L
+        private const val NANOS_PER_MILLI = 1_000_000L
+
+        /** Twice Android's double-tap timeout (300 ms), far shorter than a deliberate second action. */
+        const val DOUBLE_TAP_GUARD_MILLIS = 600L
 
         val Factory = viewModelFactory {
             initializer {
@@ -195,6 +272,7 @@ class DashboardViewModel(
                 DashboardViewModel(
                     controller = container.trackingController,
                     settingsRepository = container.settingsRepository,
+                    tripRepository = container.tripRepository,
                     timeSource = container.timeSource,
                     hasGpsHardware = application.packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS),
                 )
@@ -253,5 +331,7 @@ internal fun buildUiState(
         ),
         dialog = dialog,
         isFinishing = isFinishing,
+        backgroundRecordingUnavailable = state.backgroundRecordingUnavailable &&
+            (phase == TripPhase.RUNNING || phase == TripPhase.PAUSED),
     )
 }

@@ -68,6 +68,12 @@ class ServiceTripForegroundLauncherTest {
     }
 
     @Test
+    fun `start tells the tracker whether Android accepted the request`() {
+        assertTrue(launcher(FakeHost()).start())
+        assertFalse(launcher(FakeHost(startFailure = IllegalStateException("not allowed"))).start())
+    }
+
+    @Test
     fun `a rejected background start is reported and never thrown`() {
         val cause = IllegalStateException("app is in background")
         val launcher = launcher(FakeHost(startFailure = cause))

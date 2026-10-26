@@ -32,6 +32,10 @@ sealed interface LocationGate {
  * @param askedBefore whether the app has already shown the location permission dialog at least once.
  * @param shouldShowRationale `Activity.shouldShowRequestPermissionRationale` for fine location; false both
  *   before the first request and after "don't ask again", which is why [askedBefore] is tracked.
+ * @param systemStoppedAsking Android will not show the dialog any more: the rationale flag was true at some
+ *   point and is false again (denied twice, or "don't ask again"), or a request returned at once without a
+ *   dialog. A dialog dismissed with Back or a tap outside leaves the rationale false too, but Android still
+ *   asks next time, so that alone is not "blocked".
  */
 fun resolveLocationGate(
     permission: LocationPermissionState,
@@ -39,13 +43,15 @@ fun resolveLocationGate(
     hasGpsHardware: Boolean,
     askedBefore: Boolean,
     shouldShowRationale: Boolean,
+    systemStoppedAsking: Boolean,
 ): LocationGate = when {
     !hasGpsHardware -> LocationGate.NoGpsHardware
 
     permission == LocationPermissionState.DENIED -> when {
         !askedBefore -> LocationGate.NeedsRationale
         shouldShowRationale -> LocationGate.CanRequestAgain
-        else -> LocationGate.PermanentlyDenied
+        systemStoppedAsking -> LocationGate.PermanentlyDenied
+        else -> LocationGate.CanRequestAgain
     }
 
     permission == LocationPermissionState.GRANTED_APPROXIMATE_ONLY -> LocationGate.ApproximateOnly

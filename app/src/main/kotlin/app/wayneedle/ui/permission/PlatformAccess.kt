@@ -8,12 +8,15 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -24,6 +27,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.permissions.AppPermissions
+import app.wayneedle.permissions.NotificationStatus
+import app.wayneedle.permissions.TripNotificationVisibility
 import app.wayneedle.ui.dashboard.LocationGate
 import app.wayneedle.ui.dashboard.resolveLocationGate
 
@@ -65,25 +70,58 @@ fun rememberLocationAccess(
     val preferences = remember(context) { UiPreferences(context) }
     var askedBefore by remember { mutableStateOf(preferences.locationRequested) }
     var shouldShowRationale by remember { mutableStateOf(context.fineLocationRationale()) }
+    var rationaleSeen by remember { mutableStateOf(preferences.locationRationaleSeen) }
+    var requestReturnedWithoutDialog by remember { mutableStateOf(false) }
+    var requestStartedAt by remember { mutableLongStateOf(0L) }
     val currentOnResult by rememberUpdatedState(onPermissionResult)
 
-    LifecycleResumeEffect(Unit) {
+    fun observeRationale() {
         shouldShowRationale = context.fineLocationRationale()
-        onPauseOrDispose { }
+        if (shouldShowRationale && !rationaleSeen) {
+            rationaleSeen = true
+            preferences.locationRationaleSeen = true
+        }
     }
 
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+    LifecycleResumeEffect(Unit) {
+        observeRationale()
+        onPauseOrDispose { }
+    }
+    // A later one-time grant that expires must not look like "don't ask again".
+    LaunchedEffect(permission) {
+        if (permission == LocationPermissionState.GRANTED_PRECISE && rationaleSeen) {
+            rationaleSeen = false
+            preferences.locationRationaleSeen = false
+        }
+    }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         preferences.locationRequested = true
         askedBefore = true
-        shouldShowRationale = context.fineLocationRationale()
+        observeRationale()
+        val granted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        // Android answers at once, without a dialog, when it will not ask any more.
+        requestReturnedWithoutDialog = !granted && !shouldShowRationale &&
+            SystemClock.elapsedRealtime() - requestStartedAt < NO_DIALOG_RESULT_MILLIS
         currentOnResult()
     }
 
-    val gate = resolveLocationGate(permission, providerEnabled, hasGpsHardware, askedBefore, shouldShowRationale)
+    val gate = resolveLocationGate(
+        permission = permission,
+        providerEnabled = providerEnabled,
+        hasGpsHardware = hasGpsHardware,
+        askedBefore = askedBefore,
+        shouldShowRationale = shouldShowRationale,
+        systemStoppedAsking = rationaleSeen || requestReturnedWithoutDialog,
+    )
     return remember(gate, launcher, context) {
         LocationAccess(
             gate = gate,
-            requestPermission = { launcher.launch(AppPermissions.location) },
+            requestPermission = {
+                requestStartedAt = SystemClock.elapsedRealtime()
+                launcher.launch(AppPermissions.location)
+            },
             openAppSettings = {
                 context.startSettings(
                     Intent(
@@ -96,6 +134,9 @@ fun rememberLocationAccess(
         )
     }
 }
+
+/** A result faster than this came without a dialog: no human answers a permission dialog that quickly. */
+private const val NO_DIALOG_RESULT_MILLIS = 350L
 
 private fun Context.fineLocationRationale(): Boolean {
     val activity = findActivity() ?: return false
@@ -122,5 +163,31 @@ fun rememberNotificationRequester(): () -> Unit {
                 launcher.launch(permission)
             }
         }
+    }
+}
+
+/** Whether the trip notification can be seen, re-checked whenever the app returns, and how to fix it. */
+@Immutable
+class NotificationAccess(val blocked: Boolean, val openSettings: () -> Unit)
+
+@Composable
+fun rememberNotificationAccess(): NotificationAccess {
+    val context = LocalContext.current
+    val status = remember(context) { NotificationStatus(context) }
+    var blocked by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        blocked = status.tripNotificationVisibility() != TripNotificationVisibility.VISIBLE
+        onPauseOrDispose { }
+    }
+    return remember(blocked, context) {
+        NotificationAccess(
+            blocked = blocked,
+            openSettings = {
+                context.startSettings(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                )
+            },
+        )
     }
 }

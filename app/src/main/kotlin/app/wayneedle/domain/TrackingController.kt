@@ -71,6 +71,12 @@ interface TrackingController {
     fun refreshEnvironment()
 
     /**
+     * The foreground service could not enter the foreground (for example a battery restriction). The active
+     * trip keeps recording while the app is visible and the state says so, so the UI can tell the user.
+     */
+    fun reportBackgroundRecordingUnavailable()
+
+    /**
      * Restores an interrupted trip from the checkpoint (as PAUSED, recovered = true). Never starts the
      * foreground service. Returns true if a trip was restored.
      */

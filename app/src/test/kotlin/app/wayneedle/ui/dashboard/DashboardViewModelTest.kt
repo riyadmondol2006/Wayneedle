@@ -12,6 +12,7 @@ import app.wayneedle.ui.MainDispatcherRule
 import app.wayneedle.ui.keepActive
 import app.wayneedle.ui.preview.FakeSettingsRepository
 import app.wayneedle.ui.preview.FakeTrackingController
+import app.wayneedle.ui.preview.FakeTripRepository
 import app.wayneedle.ui.preview.PreviewData
 import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.SpeedUnavailableReason
@@ -26,6 +27,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -34,12 +36,16 @@ class DashboardViewModelTest {
     val mainDispatcher = MainDispatcherRule()
 
     private val settings = FakeSettingsRepository()
+    private val trips = FakeTripRepository()
     private val timeSource = FakeTimeSource(wallClockMillis = PreviewData.NOW)
 
     private fun viewModel(
         controller: FakeTrackingController,
         hasGpsHardware: Boolean = true,
-    ) = DashboardViewModel(controller, settings, timeSource, hasGpsHardware)
+    ) = DashboardViewModel(controller, settings, trips, timeSource, hasGpsHardware)
+
+    /** A deliberate next tap, well after the double-tap guard. */
+    private fun thinkBeforeTapping() = timeSource.advanceMillis(DashboardViewModel.DOUBLE_TAP_GUARD_MILLIS + 400L)
 
     // ---- state mapping ----------------------------------------------------------------------------------------
 
@@ -131,6 +137,70 @@ class DashboardViewModelTest {
         assertEquals(2_292_000L, recovered.stats.activeDurationMillis)
     }
 
+    // ---- real-life taps and restarts ------------------------------------------------------------------------------
+
+    @Test
+    fun `a double tap on Start does not pause the trip it just started`() = runTest {
+        val controller = FakeTrackingController(PreviewData.idleStationary)
+        val vm = viewModel(controller)
+        keepActive(vm.uiState)
+        assertEquals(CommandResult.Ok, vm.startTrip())
+        // The second tap lands where Pause now is, 150 ms later.
+        timeSource.advanceMillis(150L)
+        vm.pauseTrip()
+        vm.requestFinish()
+        assertEquals(TripPhase.RUNNING, vm.uiState.value.trip.phase)
+        assertNull(vm.uiState.value.dialog)
+        assertEquals(listOf("startTrip"), controller.commands)
+        // A deliberate Pause a moment later works.
+        thinkBeforeTapping()
+        vm.pauseTrip()
+        assertEquals(TripPhase.PAUSED, vm.uiState.value.trip.phase)
+    }
+
+    @Test
+    fun `a double tap on Pause does not resume at once`() = runTest {
+        val controller = FakeTrackingController(PreviewData.running)
+        val vm = viewModel(controller)
+        keepActive(vm.uiState)
+        vm.pauseTrip()
+        timeSource.advanceMillis(200L)
+        vm.resumeTrip()
+        assertEquals(TripPhase.PAUSED, vm.uiState.value.trip.phase)
+    }
+
+    @Test
+    fun `the summary survives the app being closed and reopened`() = runTest {
+        // The trip was finished and stored earlier; this is a brand-new view model on the FINISHED tracker.
+        trips.saveTrip(PreviewData.savedTrip)
+        val vm = viewModel(FakeTrackingController(PreviewData.finished))
+        keepActive(vm.uiState)
+        val trip = vm.uiState.value.trip
+        assertEquals(PreviewData.savedTrip.id, trip.savedTripId, "View details must still work")
+        assertEquals(PreviewData.savedTrip.totalDurationMillis, trip.totalDurationMillis)
+    }
+
+    @Test
+    fun `the summary drops its details link when the trip is deleted from History`() = runTest {
+        val controller = FakeTrackingController(PreviewData.paused, trips)
+        val vm = viewModel(controller)
+        keepActive(vm.uiState)
+        vm.confirmFinish()
+        val id = assertNotNull(vm.uiState.value.trip.savedTripId)
+        trips.deleteTrip(id)
+        assertNull(vm.uiState.value.trip.savedTripId)
+    }
+
+    @Test
+    fun `a refused foreground service is shown only while a trip is active`() = runTest {
+        val controller = FakeTrackingController(PreviewData.running.copy(backgroundRecordingUnavailable = true))
+        val vm = viewModel(controller)
+        keepActive(vm.uiState)
+        assertTrue(vm.uiState.value.backgroundRecordingUnavailable)
+        controller.update { PreviewData.idleStationary.copy(backgroundRecordingUnavailable = true) }
+        assertFalse(vm.uiState.value.backgroundRecordingUnavailable)
+    }
+
     // ---- total time ---------------------------------------------------------------------------------------------
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -177,8 +247,10 @@ class DashboardViewModelTest {
 
         assertEquals(CommandResult.Ok, vm.startTrip())
         assertEquals(TripPhase.RUNNING, vm.uiState.value.trip.phase)
+        thinkBeforeTapping()
         vm.pauseTrip()
         assertEquals(TripPhase.PAUSED, vm.uiState.value.trip.phase)
+        thinkBeforeTapping()
         assertEquals(CommandResult.Ok, vm.resumeTrip())
         assertEquals(TripPhase.RUNNING, vm.uiState.value.trip.phase)
         assertEquals(listOf("startTrip", "pauseTrip", "resumeTrip"), controller.commands)
@@ -234,7 +306,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `confirming finish saves the trip and shows the summary with a details link`() = runTest {
-        val controller = FakeTrackingController(PreviewData.paused)
+        val controller = FakeTrackingController(PreviewData.paused, trips)
         val vm = viewModel(controller)
         keepActive(vm.uiState)
 
@@ -251,7 +323,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `done leaves the summary and returns to idle`() = runTest {
-        val controller = FakeTrackingController(PreviewData.paused)
+        val controller = FakeTrackingController(PreviewData.paused, trips)
         val vm = viewModel(controller)
         keepActive(vm.uiState)
         vm.confirmFinish()
@@ -265,7 +337,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `a failed save keeps the trip paused and offers a retry`() = runTest {
-        val controller = FakeTrackingController(PreviewData.paused)
+        val controller = FakeTrackingController(PreviewData.paused, trips)
         controller.finishHandler = { FinishResult.SaveFailed(IOException("disk full")) }
         val vm = viewModel(controller)
         keepActive(vm.uiState)

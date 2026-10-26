@@ -25,8 +25,8 @@ data class NavigationItem(
 /**
  * The compact-width navigation bar.
  *
- * Opt-in: `ShortNavigationBar` is the Expressive replacement for `NavigationBar` and is
- * `@ExperimentalMaterial3ExpressiveApi` in material3 1.4.0. The opt-in is local to this function.
+ * `ShortNavigationBar` is the Expressive replacement for `NavigationBar` and is stable (no opt-in) in
+ * material3 1.4.0.
  */
 @Composable
 fun WayneedleNavigationBar(

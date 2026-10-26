@@ -101,4 +101,50 @@ class NotificationUpdateGateTest {
         // Back in RUNNING later: no longer suppressed.
         assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("r"), nowMillis = 2_000L))
     }
+
+    @Test
+    fun `with the screen off updates wait 30 seconds, and resume at once when it comes on`() {
+        val gate = NotificationUpdateGate()
+        gate.onPosted(content("a"), nowMillis = 0L)
+        assertEquals(
+            NotificationUpdateGate.Decision.PostAfter(28_000L),
+            gate.decide(content("b"), nowMillis = 2_000L, screenOn = false),
+        )
+        assertEquals(
+            NotificationUpdateGate.Decision.PostNow,
+            gate.decide(content("c"), nowMillis = 3_000L, screenOn = true),
+        )
+    }
+
+    @Test
+    fun `a phase change is shown at once, even inside the interval or with the screen off`() {
+        val gate = NotificationUpdateGate()
+        gate.onPosted(content("a"), nowMillis = 0L)
+        assertEquals(
+            NotificationUpdateGate.Decision.PostNow,
+            gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 100L, screenOn = false),
+        )
+    }
+
+    @Test
+    fun `a swipe silences the phase of the swiped notification, not the newer trip phase`() {
+        val gate = NotificationUpdateGate()
+        gate.onPosted(content("recording"), nowMillis = 0L)
+        // The user paused in the app and swiped the still "recording" notification before it updated.
+        gate.onDismissedByUser(currentPhase = TripPhase.PAUSED)
+        assertEquals(
+            NotificationUpdateGate.Decision.PostNow,
+            gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 500L),
+            "the paused notification must still appear",
+        )
+    }
+
+    @Test
+    fun `reset forgets a dismissal from the previous trip`() {
+        val gate = NotificationUpdateGate()
+        gate.onPosted(content("a"), nowMillis = 0L)
+        gate.onDismissedByUser(TripPhase.RUNNING)
+        gate.reset()
+        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("next trip"), nowMillis = 100L))
+    }
 }

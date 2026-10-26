@@ -170,6 +170,16 @@ internal fun DashboardPanel(
             else -> {
                 if (trip.phase == TripPhase.PAUSED && trip.recovered) RecoveredTripCard(state, formatter, actions)
                 if (gate != LocationGate.Ready) GateBanner(gate, actions)
+                if (state.backgroundRecordingUnavailable) {
+                    WarningBanner(stringResource(R.string.banner_background_unavailable))
+                }
+                if (state.notificationsBlocked && state.isTripActive) {
+                    WarningBanner(
+                        message = stringResource(R.string.banner_notifications_off),
+                        actionLabel = stringResource(R.string.action_turn_on),
+                        onAction = actions.onOpenNotificationSettings,
+                    )
+                }
                 TripStatsPanel(state, formatter)
             }
         }
@@ -364,13 +374,29 @@ internal fun LocationGateCard(gate: LocationGate, actions: DashboardActions, mod
 /** A compact warning for when location is lost during an active trip; the controls stay available. */
 @Composable
 private fun GateBanner(gate: LocationGate, actions: DashboardActions, modifier: Modifier = Modifier) {
-    val extra = LocalExtraColors.current
     val messageRes = when (gate) {
         LocationGate.GpsOff -> R.string.gate_banner_gps_off
         LocationGate.NoGpsHardware -> R.string.gate_no_gps_title
         else -> R.string.gate_banner_permission
     }
     val action = gateAction(gate, actions)
+    WarningBanner(
+        message = stringResource(messageRes),
+        actionLabel = action?.let { stringResource(it.labelRes) },
+        onAction = action?.onClick ?: {},
+        modifier = modifier,
+    )
+}
+
+/** A one-line warning strip during an active trip, with an optional fix-it action. */
+@Composable
+private fun WarningBanner(
+    message: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: () -> Unit = {},
+) {
+    val extra = LocalExtraColors.current
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -384,12 +410,12 @@ private fun GateBanner(gate: LocationGate, actions: DashboardActions, modifier: 
         ) {
             Icon(WayneedleIcons.Warning, contentDescription = null, modifier = Modifier.size(24.dp))
             Text(
-                text = stringResource(messageRes),
+                text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            if (action != null) {
-                TextButton(onClick = action.onClick) { Text(stringResource(action.labelRes)) }
+            if (actionLabel != null) {
+                TextButton(onClick = onAction) { Text(actionLabel) }
             }
         }
     }

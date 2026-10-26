@@ -56,13 +56,17 @@ class UiFormatter(val locale: Locale = Locale.getDefault()) {
         if (!meters.isFinite()) PLACEHOLDER else twoDecimalFormat.format(unit.fromMeters(meters.coerceAtLeast(0.0)))
 
     /** Whole GPS accuracy radius in metres (km/h users) or feet (mph users). */
-    fun accuracy(meters: Float, unit: SpeedUnit): String {
-        if (!meters.isFinite()) return PLACEHOLDER
+    fun accuracy(meters: Float, unit: SpeedUnit): String =
+        if (!meters.isFinite()) PLACEHOLDER else integerFormat.format(accuracyInUnit(meters, unit))
+
+    /** The number [accuracy] shows, for choosing the matching plural form. */
+    fun accuracyInUnit(meters: Float, unit: SpeedUnit): Long {
+        if (!meters.isFinite()) return 0L
         val value = when (unit) {
             SpeedUnit.KMH -> meters.toDouble()
             SpeedUnit.MPH -> meters * METERS_TO_FEET
         }
-        return integerFormat.format(value.coerceAtLeast(0.0).roundToLong())
+        return value.coerceAtLeast(0.0).roundToLong()
     }
 
     /** `H:MM:SS`; hours are not capped (100 h is `100:00:00`). Digits follow the locale. */

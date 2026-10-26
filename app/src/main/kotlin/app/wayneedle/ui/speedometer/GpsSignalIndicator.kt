@@ -126,11 +126,14 @@ private fun spokenDescription(
     unit: SpeedUnit,
     formatter: UiFormatter,
 ): String {
-    val parts = mutableListOf(stringResource(R.string.spoken_gps_signal, headline))
+    // "GPS off" already names the GPS; "GPS: GPS off" would read the word twice.
+    val parts =
+        mutableListOf(if (gps.providerEnabled) stringResource(R.string.spoken_gps_signal, headline) else headline)
     val accuracy = gps.horizontalAccuracyM
     if (accuracy != null && quality != GpsSignalQuality.NONE && accuracy.isFinite()) {
         val value = formatter.accuracy(accuracy, unit)
-        val quantity = Math.round(accuracy.toDouble()).toInt()
+        // The plural must agree with the number spoken (feet for mph users), not with the metres.
+        val quantity = formatter.accuracyInUnit(accuracy, unit).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         parts += when (unit) {
             SpeedUnit.KMH -> pluralStringResource(R.plurals.spoken_accuracy_m, quantity, value)
             SpeedUnit.MPH -> pluralStringResource(R.plurals.spoken_accuracy_ft, quantity, value)

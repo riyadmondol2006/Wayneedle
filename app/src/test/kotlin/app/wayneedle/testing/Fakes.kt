@@ -120,9 +120,10 @@ class FakeTripForegroundLauncher : TripForegroundLauncher {
     val startCalls: Int get() = starts.get()
     val stopCalls: Int get() = stops.get()
 
-    override fun start() {
+    override fun start(): Boolean {
         starts.incrementAndGet()
         isRunning = true
+        return true
     }
 
     override fun stop() {
@@ -215,7 +216,17 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
  * commands the unit under test sent. It does not simulate the state machine; use the real tracker for that.
  */
 class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : TrackingController {
-    enum class Command { START, PAUSE, RESUME, FINISH, DISCARD, DISMISS_FINISHED, REFRESH_ENVIRONMENT, RECOVER }
+    enum class Command {
+        START,
+        PAUSE,
+        RESUME,
+        FINISH,
+        DISCARD,
+        DISMISS_FINISHED,
+        REFRESH_ENVIRONMENT,
+        RECOVER,
+        REPORT_BACKGROUND_UNAVAILABLE,
+    }
 
     private val mutableState = MutableStateFlow(initial)
     private val log = CopyOnWriteArrayList<Command>()
@@ -269,6 +280,11 @@ class FakeTrackingController(initial: TrackingState = TrackingState.Initial) : T
 
     override fun refreshEnvironment() {
         log += Command.REFRESH_ENVIRONMENT
+    }
+
+    override fun reportBackgroundRecordingUnavailable() {
+        log += Command.REPORT_BACKGROUND_UNAVAILABLE
+        mutableState.update { it.copy(backgroundRecordingUnavailable = true) }
     }
 
     override suspend fun recoverInterruptedTrip(): Boolean {

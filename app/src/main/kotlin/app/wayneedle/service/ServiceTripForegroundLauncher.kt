@@ -78,9 +78,7 @@ class ServiceTripForegroundLauncher internal constructor(
         permissionChecker: LocationPermissionChecker = AndroidLocationPermissionChecker(context),
     ) : this(AndroidServiceHost(context.applicationContext), permissionChecker, LogLauncherEvents)
 
-    override fun start() {
-        launch()
-    }
+    override fun start(): Boolean = launch() == ForegroundStartResult.Started
 
     override fun stop() {
         if (!isServiceForeground()) return

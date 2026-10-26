@@ -33,7 +33,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 override fun onStop(owner: LifecycleOwner) {
-                    trackingController.setUiVisible(false)
+                    // A rotation, theme switch or window resize recreates the activity at once; releasing the GPS
+                    // for it would blank the live speed and re-register the listener every time.
+                    if (!isChangingConfigurations) trackingController.setUiVisible(false)
                 }
             },
         )

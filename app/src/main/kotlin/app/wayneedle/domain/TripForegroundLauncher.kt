@@ -9,7 +9,12 @@ package app.wayneedle.domain
  * [stop] is idempotent.
  */
 interface TripForegroundLauncher {
-    fun start()
+    /**
+     * Asks for the foreground service. Returns false when Android refused synchronously, so the trip can only
+     * record while the app is visible; an asynchronous refusal arrives through
+     * [TrackingController.reportBackgroundRecordingUnavailable].
+     */
+    fun start(): Boolean
 
     fun stop()
 }
