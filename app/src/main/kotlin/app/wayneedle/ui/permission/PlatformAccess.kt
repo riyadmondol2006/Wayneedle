@@ -198,27 +198,43 @@ fun rememberNotificationAccess(): NotificationAccess {
     }
 }
 
-/** Settings that would stop background recording, re-checked whenever the app returns, and how to fix them. */
+/**
+ * Settings that would stop background recording, re-checked whenever the app returns, and how to fix them.
+ * [risks] leaves out a Battery Saver warning the user closed with [dismissBatterySaverWarning].
+ */
 @Immutable
 class BackgroundAccess(
     val risks: Set<BackgroundRisk>,
     val openAppSettings: () -> Unit,
     val openBatterySaverSettings: () -> Unit,
+    val dismissBatterySaverWarning: () -> Unit,
 )
 
 @Composable
 fun rememberBackgroundAccess(): BackgroundAccess {
     val context = LocalContext.current
+    val preferences = remember(context) { UiPreferences(context) }
     var risks by remember { mutableStateOf(emptySet<BackgroundRisk>()) }
-    LifecycleResumeEffect(Unit) {
+    var batterySaverDismissed by remember { mutableStateOf(preferences.batterySaverWarningDismissed) }
+
+    fun refresh() {
         risks = context.currentBackgroundRisks()
+        val keep = keepBatterySaverDismissal(risks, batterySaverDismissed)
+        if (keep != batterySaverDismissed) {
+            batterySaverDismissed = keep
+            preferences.batterySaverWarningDismissed = keep
+        }
+    }
+
+    LifecycleResumeEffect(Unit) {
+        refresh()
         onPauseOrDispose { }
     }
     // Battery Saver can be switched from the quick settings while the app stays on screen.
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(receiverContext: Context, intent: Intent) {
-                risks = context.currentBackgroundRisks()
+                refresh()
             }
         }
         ContextCompat.registerReceiver(
@@ -229,9 +245,10 @@ fun rememberBackgroundAccess(): BackgroundAccess {
         )
         onDispose { context.unregisterReceiver(receiver) }
     }
-    return remember(risks, context) {
+    val shown = shownBackgroundRisks(risks, batterySaverDismissed)
+    return remember(shown, context) {
         BackgroundAccess(
-            risks = risks,
+            risks = shown,
             openAppSettings = {
                 context.startSettings(
                     Intent(
@@ -241,6 +258,10 @@ fun rememberBackgroundAccess(): BackgroundAccess {
                 )
             },
             openBatterySaverSettings = { context.startSettings(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) },
+            dismissBatterySaverWarning = {
+                batterySaverDismissed = true
+                preferences.batterySaverWarningDismissed = true
+            },
         )
     }
 }

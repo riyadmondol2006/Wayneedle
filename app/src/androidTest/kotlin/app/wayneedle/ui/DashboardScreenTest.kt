@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -20,6 +21,7 @@ import app.wayneedle.ui.dashboard.DashboardDialog
 import app.wayneedle.ui.dashboard.DashboardScreen
 import app.wayneedle.ui.dashboard.DashboardUiState
 import app.wayneedle.ui.dashboard.LocationGate
+import app.wayneedle.ui.permission.BackgroundRisk
 import app.wayneedle.ui.preview.PreviewData
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -47,6 +49,8 @@ class DashboardScreenTest {
         onRequestPermission = { calls += "requestPermission" },
         onOpenAppSettings = { calls += "openAppSettings" },
         onOpenLocationSettings = { calls += "openLocationSettings" },
+        onOpenBatterySaverSettings = { calls += "openBatterySaverSettings" },
+        onDismissBatterySaverWarning = { calls += "dismissBatterySaverWarning" },
     )
 
     private fun show(
@@ -270,5 +274,14 @@ class DashboardScreenTest {
         show(running.copy(notificationsBlocked = true, backgroundRecordingUnavailable = true))
         rule.onNodeWithText(string(R.string.banner_notifications_off)).performScrollTo().assertIsDisplayed()
         rule.onNodeWithText(string(R.string.banner_background_unavailable)).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun theBatterySaverWarningCanBeClosed() {
+        val running = PreviewData.dashboard(PreviewData.running)
+        show(running.copy(backgroundRisks = setOf(BackgroundRisk.BATTERY_SAVER_STOPS_GPS)))
+        rule.onNodeWithText(string(R.string.banner_battery_saver_gps)).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithContentDescription(string(R.string.action_hide_warning)).performScrollTo().performClick()
+        assertEquals(listOf("dismissBatterySaverWarning"), calls)
     }
 }

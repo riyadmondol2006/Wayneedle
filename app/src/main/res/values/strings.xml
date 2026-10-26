@@ -195,6 +195,7 @@
     <string name="banner_battery_restricted">Battery use for Wayneedle is set to Restricted, so Android may stop recording when the screen is off.</string>
     <string name="banner_battery_saver_gps">Battery Saver turns GPS off while the screen is off, so a trip stops measuring in your pocket.</string>
     <string name="action_change">Change</string>
+    <string name="action_hide_warning">Hide this warning</string>
     <string name="spoken_over_speed_limit">above your speed alert limit</string>
     <string name="status_over_speed_limit">Above %1$s %2$s</string>
     <string name="settings_speed_alert">Speed alert</string>

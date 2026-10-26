@@ -129,6 +129,10 @@ Room (`data/db`) with exported schemas in `app/schemas/`; DataStore Preferences 
   While the app is visible (`TrackingState.uiVisible`) the dashboard alerts (red dial, limit mark, status pill,
   vibration and optional beep); otherwise the foreground service alerts during a `RUNNING` trip. Returning to the app
   while still above the limit alerts once more, because the dashboard starts its own monitor.
+* **Closing the Battery Saver warning** hides it while Battery Saver keeps stopping GPS (saved in
+  `UiPreferences`); once the app sees Battery Saver off, the choice is forgotten, so turning it on again later warns
+  again (`keepBatterySaverDismissal`). The other warnings cannot be closed: each one means the trip is not recording
+  properly.
 * **Keep screen on** (`KeepAwakePolicy`): only while moving (≥ 1 m/s) and for 5 minutes after the last movement or
   a trip start/resume, so a phone left on the dashboard reaches its normal screen timeout.
 * **HUD mode**: full-screen white-on-black speed, optionally mirrored for windscreen reflection, immersive, keeps the

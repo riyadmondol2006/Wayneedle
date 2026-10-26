@@ -232,6 +232,7 @@ internal fun DashboardPanel(
                         message = stringResource(R.string.banner_battery_saver_gps),
                         actionLabel = stringResource(R.string.action_change),
                         onAction = actions.onOpenBatterySaverSettings,
+                        onDismiss = actions.onDismissBatterySaverWarning,
                     )
                 }
                 if (state.notificationsBlocked && state.isTripActive) {
@@ -471,13 +472,14 @@ private fun GateBanner(gate: LocationGate, actions: DashboardActions, modifier: 
     )
 }
 
-/** A one-line warning strip during an active trip, with an optional fix-it action. */
+/** A one-line warning strip during an active trip, with an optional fix-it action and close button. */
 @Composable
 private fun WarningBanner(
     message: String,
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: () -> Unit = {},
+    onDismiss: (() -> Unit)? = null,
 ) {
     val extra = LocalExtraColors.current
     Surface(
@@ -499,6 +501,11 @@ private fun WarningBanner(
             )
             if (actionLabel != null) {
                 TextButton(onClick = onAction) { Text(actionLabel) }
+            }
+            if (onDismiss != null) {
+                IconButton(onClick = onDismiss) {
+                    Icon(WayneedleIcons.Close, contentDescription = stringResource(R.string.action_hide_warning))
+                }
             }
         }
     }

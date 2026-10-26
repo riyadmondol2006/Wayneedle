@@ -56,6 +56,7 @@ fun DashboardRoute(
             onOpenLocationSettings = access.openLocationSettings,
             onOpenNotificationSettings = notifications.openSettings,
             onOpenBatterySaverSettings = background.openBatterySaverSettings,
+            onDismissBatterySaverWarning = background.dismissBatterySaverWarning,
             onOpenHud = onOpenHud,
         )
     }

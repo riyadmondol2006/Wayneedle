@@ -31,6 +31,20 @@ fun backgroundRisks(
     }
 }
 
+/**
+ * The warnings to show: [risks] without the Battery Saver warning while the user has closed it. A closed warning
+ * stays closed only while the risk lasts (see [keepBatterySaverDismissal]).
+ */
+fun shownBackgroundRisks(risks: Set<BackgroundRisk>, batterySaverDismissed: Boolean): Set<BackgroundRisk> =
+    if (batterySaverDismissed) risks - BackgroundRisk.BATTERY_SAVER_STOPS_GPS else risks
+
+/**
+ * Whether a closed Battery Saver warning stays closed after the risks were re-read: only while Battery Saver
+ * still stops GPS. Once it is seen off, turning it on again later warns again.
+ */
+fun keepBatterySaverDismissal(risks: Set<BackgroundRisk>, dismissed: Boolean): Boolean =
+    dismissed && BackgroundRisk.BATTERY_SAVER_STOPS_GPS in risks
+
 // Inlined int constants, only ever compared with a mode read on API 28+ (backgroundRisks returns early below):
 // safe on every API level. THROTTLE (API 29) simply never occurs on API 28.
 @SuppressLint("InlinedApi")

@@ -3,6 +3,8 @@ package app.wayneedle.ui.permission
 import android.os.PowerManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class BackgroundRisksTest {
     private fun risks(
@@ -46,5 +48,26 @@ class BackgroundRisksTest {
             risks(restricted = true, saver = true, mode = PowerManager.LOCATION_MODE_ALL_DISABLED_WHEN_SCREEN_OFF),
         )
         assertEquals(emptySet(), risks(sdk = 27, restricted = true, saver = true, mode = 1))
+    }
+
+    @Test
+    fun `a closed battery saver warning is hidden, and the other warning is not`() {
+        val both = setOf(BackgroundRisk.APP_BATTERY_RESTRICTED, BackgroundRisk.BATTERY_SAVER_STOPS_GPS)
+        assertEquals(
+            setOf(BackgroundRisk.APP_BATTERY_RESTRICTED),
+            shownBackgroundRisks(both, batterySaverDismissed = true),
+        )
+        assertEquals(both, shownBackgroundRisks(both, batterySaverDismissed = false))
+    }
+
+    @Test
+    fun `a closed battery saver warning comes back once battery saver has been off`() {
+        val saver = setOf(BackgroundRisk.BATTERY_SAVER_STOPS_GPS)
+        assertTrue(keepBatterySaverDismissal(saver, dismissed = true), "still on: stays closed")
+        assertFalse(keepBatterySaverDismissal(emptySet(), dismissed = true), "seen off: forgotten")
+        assertFalse(keepBatterySaverDismissal(saver, dismissed = false), "never closed")
+        // Seen off, then on again: the warning shows again.
+        val afterOff = keepBatterySaverDismissal(emptySet(), dismissed = true)
+        assertEquals(saver, shownBackgroundRisks(saver, keepBatterySaverDismissal(saver, afterOff)))
     }
 }
