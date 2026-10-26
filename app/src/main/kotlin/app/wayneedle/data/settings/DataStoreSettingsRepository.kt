@@ -9,10 +9,11 @@ import app.wayneedle.domain.SettingsRepository
 import app.wayneedle.domain.model.AppSettings
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.ThemeMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import java.io.IOException
 
 /**
@@ -20,8 +21,9 @@ import java.io.IOException
  *
  * Reads are total: a missing key, an unknown or legacy enum string, or a value of the wrong stored type
  * yields the [AppSettings.Default] value for that setting, and an `IOException` (which includes
- * `CorruptionException`) from the file yields all defaults, so [settings] never throws. Corrupt files are
- * additionally replaced by the DataStore's corruption handler (see [settingsDataStore]).
+ * `CorruptionException`) from the file yields all defaults, so [settings] never throws. After such a failure
+ * the file is read again with a growing delay, so the flow keeps following later changes instead of ending.
+ * Corrupt files are additionally replaced by the DataStore's corruption handler (see [settingsDataStore]).
  *
  * Writes go through `DataStore.edit`, which is atomic and serialised, so concurrent setters never lose
  * each other's updates. A write that fails with an `IOException` (e.g. disk full) is dropped: the previous
@@ -29,8 +31,13 @@ import java.io.IOException
  */
 class DataStoreSettingsRepository(private val dataStore: DataStore<Preferences>) : SettingsRepository {
     override val settings: Flow<AppSettings> = dataStore.data
-        .catch { cause ->
-            if (cause is IOException) emit(emptyPreferences()) else throw cause
+        .retryWhen { cause, attempt ->
+            if (cause !is IOException) return@retryWhen false
+            emit(emptyPreferences())
+            delay(
+                (RETRY_BASE_MILLIS shl attempt.coerceAtMost(MAX_BACKOFF_SHIFT).toInt()).coerceAtMost(RETRY_MAX_MILLIS),
+            )
+            true
         }
         .map(Preferences::toAppSettings)
         .distinctUntilChanged()
@@ -57,6 +64,12 @@ class DataStoreSettingsRepository(private val dataStore: DataStore<Preferences>)
         } catch (e: IOException) {
             // Intentionally swallowed, see the class KDoc.
         }
+    }
+
+    private companion object {
+        const val RETRY_BASE_MILLIS = 1_000L
+        const val RETRY_MAX_MILLIS = 60_000L
+        const val MAX_BACKOFF_SHIFT = 6L
     }
 }
 

@@ -12,8 +12,10 @@ import org.junit.Rule
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TripDetailViewModelTest {
     @get:Rule
@@ -79,23 +81,55 @@ class TripDetailViewModelTest {
 
             vm.confirmDelete()
 
-            assertEquals(TripDetailUiState.Deleted, awaitItem())
+            val seen = mutableListOf<TripDetailUiState>()
+            do {
+                val state = awaitItem()
+                seen += state
+            } while (state != TripDetailUiState.Deleted)
+            assertTrue(TripDetailUiState.NotFound !in seen, "flashed not found: $seen")
             cancelAndIgnoreRemainingEvents()
         }
         assertNull(repository.getTrip(trip.id))
     }
 
     @Test
-    fun `a failed delete returns to the trip`() = runTest {
+    fun `a failed delete keeps the screen open and says so`() = runTest {
         val repository = FakeTripRepository(PreviewData.trips)
-        repository.deleteFailure = IOException("locked")
+        repository.deleteFailure = IOException("disk full")
+        val vm = TripDetailViewModel(trip.id, repository, settings)
+        vm.uiState.test {
+            assertIs<TripDetailUiState.Loaded>(awaitItem())
+            vm.requestDelete()
+            awaitItem()
+            vm.confirmDelete()
+            // Never Deleted: the screen must not close as if it had worked.
+            val failed = assertIs<TripDetailUiState.Loaded>(expectMostRecentItem())
+            assertTrue(failed.deleteFailed)
+            vm.dismissDeleteError()
+            assertFalse(assertIs<TripDetailUiState.Loaded>(awaitItem()).deleteFailed)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(trip, repository.getTrip(trip.id))
+    }
+
+    @Test
+    fun `tapping Delete twice in the dialog deletes once`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
         val vm = TripDetailViewModel(trip.id, repository, settings)
         keepActive(vm.uiState)
-
         vm.requestDelete()
         vm.confirmDelete()
+        vm.confirmDelete()
+        assertEquals(1, repository.deleteCalls)
+        assertEquals(TripDetailUiState.Deleted, vm.uiState.value)
+    }
 
-        assertIs<TripDetailUiState.Loaded>(vm.uiState.value)
-        assertEquals(trip, repository.getTrip(trip.id))
+    @Test
+    fun `an unreadable database does not crash the screen`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        repository.readFailure = IOException("database disk image is malformed")
+        val vm = TripDetailViewModel(trip.id, repository, settings)
+        keepActive(vm.uiState)
+        assertEquals(TripDetailUiState.NotFound, vm.uiState.value)
     }
 }

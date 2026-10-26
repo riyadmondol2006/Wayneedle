@@ -38,6 +38,7 @@ import app.wayneedle.domain.model.AppSettings
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.ThemeMode
 import app.wayneedle.ui.components.ConfirmDialog
+import app.wayneedle.ui.components.DeleteFailedDialog
 import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonStyle
 import app.wayneedle.ui.components.TitleScaffold
@@ -58,6 +59,7 @@ fun SettingsRoute(modifier: Modifier = Modifier) {
             onRequestDeleteAll = viewModel::requestDeleteAll,
             onConfirmDeleteAll = viewModel::confirmDeleteAll,
             onCancelDeleteAll = viewModel::cancelDeleteAll,
+            onDismissDeleteError = viewModel::dismissDeleteError,
         ),
         dynamicColorSupported = DynamicColorSupported,
         versionName = BuildConfig.VERSION_NAME,
@@ -73,6 +75,7 @@ class SettingsCallbacks(
     val onRequestDeleteAll: () -> Unit = {},
     val onConfirmDeleteAll: () -> Unit = {},
     val onCancelDeleteAll: () -> Unit = {},
+    val onDismissDeleteError: () -> Unit = {},
 )
 
 @Composable
@@ -113,6 +116,7 @@ fun SettingsScreen(
             icon = WayneedleIcons.Delete,
         )
     }
+    if (state.deleteFailed) DeleteFailedDialog(callbacks.onDismissDeleteError)
 }
 
 @Composable

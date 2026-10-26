@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cash.turbine.test
@@ -18,6 +19,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.job
@@ -220,6 +223,20 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun `after a failed read the settings keep following later changes`() = runTest {
+        val store = FlakyDataStore(failuresBeforeWorking = 1)
+        val repository = DataStoreSettingsRepository(store)
+        repository.settings.test {
+            assertEquals(AppSettings.Default, awaitItem(), "defaults while the file is unreadable")
+            // The disk recovers (the retry happens after a short delay), then the user switches to mph.
+            repository.setSpeedUnit(SpeedUnit.MPH)
+            assertEquals(AppSettings.Default.copy(speedUnit = SpeedUnit.MPH), awaitItem())
+            repository.setThemeMode(ThemeMode.DARK)
+            assertEquals(ThemeMode.DARK, awaitItem().themeMode)
+        }
+    }
+
+    @Test
     fun `an unexpected non-IO failure is not hidden`() = runTest {
         val repository = DataStoreSettingsRepository(FailingDataStore(IllegalStateException("bug")))
 
@@ -272,6 +289,22 @@ class DataStoreSettingsRepositoryTest {
 
         assertEquals(live, repository(file).settings.first())
     }
+}
+
+/** Unreadable for the first [failuresBeforeWorking] reads (a full or busy disk), then an ordinary store. */
+private class FlakyDataStore(private var failuresBeforeWorking: Int) : DataStore<Preferences> {
+    private val state = MutableStateFlow(emptyPreferences())
+
+    override val data: Flow<Preferences> = flow {
+        if (failuresBeforeWorking > 0) {
+            failuresBeforeWorking--
+            throw IOException("temporarily unreadable")
+        }
+        emitAll(state)
+    }
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+        transform(state.value).also { state.value = it }
 }
 
 /** A DataStore whose reads and writes always fail with [error]. */

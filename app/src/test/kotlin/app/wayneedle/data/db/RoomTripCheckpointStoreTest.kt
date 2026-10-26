@@ -96,6 +96,17 @@ class RoomTripCheckpointStoreTest {
     }
 
     @Test
+    fun `a locked or failing database never deletes the checkpoint`() = runTest {
+        store.save(aCheckpoint())
+        // Stands in for SQLiteDatabaseLockedException / SQLiteDiskIOException (android.database.SQLException).
+        class TransientDatabaseError : RuntimeException("database is locked")
+        dao.failOnGet = TransientDatabaseError()
+        assertFailsWith<TransientDatabaseError> { store.load() }
+        dao.failOnGet = null
+        assertEquals(aCheckpoint(), store.load(), "the in-progress trip survived the hiccup")
+    }
+
+    @Test
     fun `a valid row is never cleared by load`() = runTest {
         store.save(aCheckpoint())
 

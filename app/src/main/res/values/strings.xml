@@ -26,6 +26,11 @@
     <string name="action_view_details">View details</string>
     <string name="action_open_trip">Open trip details</string>
     <string name="action_back">Back</string>
+    <string name="action_ok">OK</string>
+    <string name="error_delete_failed_title">Couldn’t delete</string>
+    <string name="error_delete_failed_body">Nothing was deleted. Your phone may be short of storage or busy. Try again in a moment.</string>
+    <string name="history_load_failed_title">Couldn’t read your trips</string>
+    <string name="history_load_failed_body">Wayneedle couldn’t open its trip storage. Your trips have not been deleted. Freeing up storage space and reopening the app usually helps.</string>
 
     <!-- Speedometer -->
     <string name="speedometer_label">Speedometer</string>

@@ -10,6 +10,7 @@ import app.wayneedle.ui.preview.FakeTripRepository
 import app.wayneedle.ui.preview.PreviewData
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
+import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -79,5 +80,28 @@ class SettingsViewModelTest {
         keepActive(vm.settings)
         settings.setThemeMode(ThemeMode.LIGHT)
         assertEquals(ThemeMode.LIGHT, vm.settings.value?.themeMode)
+    }
+
+    @Test
+    fun `a failed delete all is reported instead of crashing`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        repository.deleteFailure = IOException("disk full")
+        val vm = SettingsViewModel(FakeSettingsRepository(), repository)
+        keepActive(vm.uiState)
+        vm.requestDeleteAll()
+        vm.confirmDeleteAll()
+        assertTrue(vm.uiState.value.deleteFailed)
+        assertEquals(PreviewData.trips.size, vm.uiState.value.tripCount)
+        vm.dismissDeleteError()
+        assertFalse(vm.uiState.value.deleteFailed)
+    }
+
+    @Test
+    fun `an unreadable database does not crash settings`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        repository.readFailure = IOException("database disk image is malformed")
+        val vm = SettingsViewModel(FakeSettingsRepository(), repository)
+        keepActive(vm.uiState)
+        assertEquals(0, vm.uiState.value.tripCount)
     }
 }

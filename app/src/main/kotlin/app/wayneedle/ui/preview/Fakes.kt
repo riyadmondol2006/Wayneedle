@@ -147,12 +147,25 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
 class FakeTripRepository(initial: List<Trip> = emptyList()) : TripRepository {
     private val trips = MutableStateFlow(initial.sortedByDescending { it.startedAtEpochMillis })
 
-    /** When set, [deleteTrip] throws it (to test failure handling). */
+    /** When set, [deleteTrip] and [deleteAllTrips] throw it (to test failure handling). */
     var deleteFailure: Exception? = null
 
-    override fun observeTrips(): Flow<List<Trip>> = trips.asStateFlow()
+    /** When set, the observed flows fail with it (an unreadable database). */
+    var readFailure: Exception? = null
 
-    override fun observeTrip(id: String): Flow<Trip?> = trips.map { list -> list.firstOrNull { it.id == id } }
+    /** Number of delete calls that reached the repository. */
+    var deleteCalls = 0
+        private set
+
+    override fun observeTrips(): Flow<List<Trip>> = trips.asStateFlow().map { list ->
+        readFailure?.let { throw it }
+        list
+    }
+
+    override fun observeTrip(id: String): Flow<Trip?> = trips.map { list ->
+        readFailure?.let { throw it }
+        list.firstOrNull { it.id == id }
+    }
 
     override suspend fun getTrip(id: String): Trip? = trips.value.firstOrNull { it.id == id }
 
@@ -163,9 +176,14 @@ class FakeTripRepository(initial: List<Trip> = emptyList()) : TripRepository {
     }
 
     override suspend fun deleteTrip(id: String) {
+        deleteCalls++
         deleteFailure?.let { throw it }
         trips.update { list -> list.filterNot { it.id == id } }
     }
 
-    override suspend fun deleteAllTrips() = trips.update { emptyList() }
+    override suspend fun deleteAllTrips() {
+        deleteCalls++
+        deleteFailure?.let { throw it }
+        trips.update { emptyList() }
+    }
 }

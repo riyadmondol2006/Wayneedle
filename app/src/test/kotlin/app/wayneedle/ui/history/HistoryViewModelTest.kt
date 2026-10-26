@@ -11,6 +11,7 @@ import app.wayneedle.ui.preview.FakeTripRepository
 import app.wayneedle.ui.preview.PreviewData
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
+import java.io.IOException
 import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.test.Test
@@ -131,5 +132,32 @@ class HistoryViewModelTest {
         keepActive(vm.uiState)
         vm.confirmDelete()
         assertEquals(PreviewData.trips.size, vm.uiState.value.days.sumOf { it.trips.size })
+    }
+
+    @Test
+    fun `an unreadable database shows an error, not an empty history, and does not crash`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        repository.readFailure = IOException("database disk image is malformed")
+        val vm = HistoryViewModel(repository, settings, utc)
+        keepActive(vm.uiState)
+        val state = vm.uiState.value
+        assertTrue(state.loadFailed)
+        assertFalse(state.isEmpty, "an error must not read as an empty history")
+        assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun `a failed delete is reported and the trip stays`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        repository.deleteFailure = IOException("disk full")
+        val vm = HistoryViewModel(repository, settings, utc)
+        keepActive(vm.uiState)
+        val id = PreviewData.trips.first().id
+        vm.requestDelete(id)
+        vm.confirmDelete()
+        assertTrue(vm.uiState.value.deleteFailed)
+        assertTrue(vm.uiState.value.days.flatMap { it.trips }.any { it.id == id })
+        vm.dismissDeleteError()
+        assertFalse(vm.uiState.value.deleteFailed)
     }
 }

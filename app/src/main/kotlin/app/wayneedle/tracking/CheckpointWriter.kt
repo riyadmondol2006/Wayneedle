@@ -20,11 +20,20 @@ import kotlin.coroutines.cancellation.CancellationException
  * generation has moved on by the time it reaches the front of the queue (no pointless write of a dead
  * trip that a process death could otherwise leave behind).
  *
- * Store failures are swallowed: checkpointing is best effort and must never break tracking.
+ * The store has a single slot, so the first save of a trip would replace whatever another trip left there.
+ * That other checkpoint is handed to [preserveOrphan] first, never silently overwritten: it belongs to a
+ * trip that was interrupted and not yet recovered (for example the user tapped Start before recovery
+ * finished, or recovery could not read the database), and losing it would lose the user's trip.
+ *
+ * A failed clear is remembered and retried before every later operation; until it succeeds, [load]
+ * reports no checkpoint, so a finished or discarded trip cannot come back in this process.
+ *
+ * Other store failures are swallowed: checkpointing is best effort and must never break tracking.
  */
 internal class CheckpointWriter(
     private val store: TripCheckpointStore,
     scope: CoroutineScope,
+    private val preserveOrphan: suspend (TripCheckpoint) -> Unit = {},
     private val isCurrentGeneration: (Long) -> Boolean,
 ) {
     private sealed interface Op {
@@ -36,6 +45,11 @@ internal class CheckpointWriter(
     }
 
     private val queue = Channel<Op>(Channel.UNLIMITED)
+
+    // Only touched by the drainer coroutine.
+    private var clearPending = false
+    private var slotTripId: String? = null
+    private var slotKnown = false
 
     init {
         val drainer = scope.launch {
@@ -71,9 +85,9 @@ internal class CheckpointWriter(
     private suspend fun execute(op: Op) {
         try {
             when (op) {
-                is Op.Save -> if (isCurrentGeneration(op.generation)) store.save(op.checkpoint)
-                Op.Clear -> store.clear()
-                is Op.Load -> op.result.complete(store.load())
+                is Op.Save -> if (isCurrentGeneration(op.generation)) saveSlot(op.checkpoint)
+                Op.Clear -> clearSlot()
+                is Op.Load -> op.result.complete(loadSlot())
             }
         } catch (e: CancellationException) {
             // Only a cancellation of the writer itself ends the loop; one thrown by the store is a failure.
@@ -85,6 +99,52 @@ internal class CheckpointWriter(
             }
         } catch (e: Exception) {
             if (op is Op.Load) op.result.completeExceptionally(e)
+        }
+    }
+
+    private suspend fun saveSlot(checkpoint: TripCheckpoint) {
+        retryPendingClear()
+        if (!clearPending && (!slotKnown || slotTripId != checkpoint.tripId)) {
+            val existing = try {
+                store.load()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (existing != null && existing.tripId != checkpoint.tripId) preserveOrphan(existing)
+        }
+        store.save(checkpoint)
+        slotTripId = checkpoint.tripId
+        slotKnown = true
+        clearPending = false
+    }
+
+    private suspend fun clearSlot() {
+        clearPending = true
+        store.clear()
+        clearPending = false
+        slotTripId = null
+        slotKnown = true
+    }
+
+    private suspend fun loadSlot(): TripCheckpoint? {
+        retryPendingClear()
+        if (clearPending) return null
+        val checkpoint = store.load()
+        slotTripId = checkpoint?.tripId
+        slotKnown = true
+        return checkpoint
+    }
+
+    private suspend fun retryPendingClear() {
+        if (!clearPending) return
+        try {
+            clearSlot()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Still failing; [clearPending] stays set.
         }
     }
 }

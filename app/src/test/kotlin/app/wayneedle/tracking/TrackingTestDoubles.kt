@@ -55,6 +55,9 @@ class FakeLocationSource(
     val maxConcurrentCollectors: Int get() = maxActive.get()
     val totalCollections: Int get() = total.get()
 
+    /** True when a collector is subscribed and [send] would deliver. */
+    val hasSubscriber: Boolean get() = events.subscriptionCount.value > 0
+
     override fun events(minIntervalMillis: Long): Flow<LocationSourceEvent> = flow {
         requestedIntervals += minIntervalMillis
         total.incrementAndGet()
@@ -98,6 +101,12 @@ class InMemoryTripRepository : TripRepository {
     /** When set, saveTrip suspends until it completes. */
     var saveGate: CompletableDeferred<Unit>? = null
 
+    /** When set, getTrip throws it. */
+    var getFailure: Exception? = null
+
+    /** When set, getTrip suspends until it completes. */
+    var getGate: CompletableDeferred<Unit>? = null
+
     val stored: Map<String, Trip> get() = trips.value
 
     override fun observeTrips(): Flow<List<Trip>> =
@@ -105,7 +114,11 @@ class InMemoryTripRepository : TripRepository {
 
     override fun observeTrip(id: String): Flow<Trip?> = trips.map { it[id] }
 
-    override suspend fun getTrip(id: String): Trip? = trips.value[id]
+    override suspend fun getTrip(id: String): Trip? {
+        getGate?.await()
+        getFailure?.let { throw it }
+        return trips.value[id]
+    }
 
     override suspend fun saveTrip(trip: Trip) {
         saveCalls++
@@ -137,6 +150,8 @@ class InMemoryCheckpointStore(initial: TripCheckpoint? = null) : TripCheckpointS
     /** When set, save() suspends (after being called) until it completes: an in-flight write. */
     var saveGate: CompletableDeferred<Unit>? = null
     var failSaves = false
+    var failClears = false
+    var failLoads = false
 
     override suspend fun save(checkpoint: TripCheckpoint) {
         saveCalls++
@@ -146,10 +161,14 @@ class InMemoryCheckpointStore(initial: TripCheckpoint? = null) : TripCheckpointS
         writes += checkpoint
     }
 
-    override suspend fun load(): TripCheckpoint? = checkpoint
+    override suspend fun load(): TripCheckpoint? {
+        if (failLoads) throw IOException("database locked")
+        return checkpoint
+    }
 
     override suspend fun clear() {
         clearCalls++
+        if (failClears) throw IOException("disk full")
         checkpoint = null
     }
 }

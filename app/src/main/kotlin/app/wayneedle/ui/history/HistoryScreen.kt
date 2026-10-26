@@ -34,6 +34,7 @@ import app.wayneedle.R
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.Trip
 import app.wayneedle.ui.components.ConfirmDialog
+import app.wayneedle.ui.components.DeleteFailedDialog
 import app.wayneedle.ui.components.EmptyState
 import app.wayneedle.ui.components.NeedleLoadingIndicator
 import app.wayneedle.ui.components.TitleScaffold
@@ -65,6 +66,7 @@ fun HistoryRoute(
         onRequestDelete = viewModel::requestDelete,
         onConfirmDelete = viewModel::confirmDelete,
         onCancelDelete = viewModel::cancelDelete,
+        onDismissDeleteError = viewModel::dismissDeleteError,
         modifier = modifier,
     )
 }
@@ -77,12 +79,21 @@ fun HistoryScreen(
     onConfirmDelete: () -> Unit,
     onCancelDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    onDismissDeleteError: () -> Unit = {},
 ) {
     val formatter = rememberUiFormatter()
     TitleScaffold(title = stringResource(R.string.nav_history), modifier = modifier) { padding ->
         when {
             state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 NeedleLoadingIndicator(size = 48.dp)
+            }
+
+            state.loadFailed -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                EmptyState(
+                    icon = WayneedleIcons.Warning,
+                    title = stringResource(R.string.history_load_failed_title),
+                    body = stringResource(R.string.history_load_failed_body),
+                )
             }
 
             state.isEmpty -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -111,6 +122,7 @@ fun HistoryScreen(
             icon = WayneedleIcons.Delete,
         )
     }
+    if (state.deleteFailed) DeleteFailedDialog(onDismissDeleteError)
 }
 
 @Composable

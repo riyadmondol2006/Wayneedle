@@ -35,6 +35,7 @@ import app.wayneedle.R
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.Trip
 import app.wayneedle.ui.components.ConfirmDialog
+import app.wayneedle.ui.components.DeleteFailedDialog
 import app.wayneedle.ui.components.EmptyState
 import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonStyle
@@ -67,6 +68,7 @@ fun TripDetailRoute(
         onRequestDelete = viewModel::requestDelete,
         onConfirmDelete = viewModel::confirmDelete,
         onCancelDelete = viewModel::cancelDelete,
+        onDismissDeleteError = viewModel::dismissDeleteError,
         modifier = modifier,
     )
 }
@@ -79,6 +81,7 @@ fun TripDetailScreen(
     onConfirmDelete: () -> Unit,
     onCancelDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    onDismissDeleteError: () -> Unit = {},
 ) {
     val formatter = rememberUiFormatter()
     val loaded = state as? TripDetailUiState.Loaded
@@ -131,6 +134,7 @@ fun TripDetailScreen(
             icon = WayneedleIcons.Delete,
         )
     }
+    if (loaded != null && loaded.deleteFailed) DeleteFailedDialog(onDismissDeleteError)
 }
 
 @Composable

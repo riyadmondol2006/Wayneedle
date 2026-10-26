@@ -167,17 +167,92 @@ class TripTrackerPersistenceTest {
     }
 
     @Test
-    fun `recovery finds nothing when there is no checkpoint or a trip is active`() = runTest {
+    fun `recovery finds nothing when there is no checkpoint`() = runTest {
         val empty = TrackerHarness(this)
         assertFalse(empty.tracker.recoverInterruptedTrip())
         assertEquals(TripPhase.IDLE, empty.state.trip.phase)
-
-        val busy = TrackerHarness(this, checkpoints = InMemoryCheckpointStore(recoverable))
-        busy.tracker.startTrip()
-        assertFalse(busy.tracker.recoverInterruptedTrip())
-        assertEquals(TripPhase.RUNNING, busy.state.trip.phase)
-        assertTrue(busy.state.trip.tripId != recoverable.tripId)
     }
+
+    @Test
+    fun `tapping Start before recovery ran files the interrupted trip into History instead of losing it`() =
+        runTest {
+            val busy = TrackerHarness(this, checkpoints = InMemoryCheckpointStore(recoverable))
+            busy.showUi()
+            assertEquals(CommandResult.Ok, busy.tracker.startTrip())
+            busy.runCurrent()
+            assertFalse(busy.tracker.recoverInterruptedTrip())
+            assertEquals(TripPhase.RUNNING, busy.state.trip.phase)
+            assertTrue(busy.state.trip.tripId != recoverable.tripId)
+
+            val preserved = assertNotNull(busy.repository.stored[recoverable.tripId])
+            assertEquals(recoverable.stats, preserved.stats)
+            assertEquals(recoverable.startedAtEpochMillis, preserved.startedAtEpochMillis)
+            assertEquals(recoverable.savedAtEpochMillis, preserved.endedAtEpochMillis)
+            assertEquals(busy.state.trip.tripId, busy.checkpoints.checkpoint?.tripId)
+        }
+
+    @Test
+    fun `tapping Start while recovery is still reading the database also keeps the interrupted trip`() =
+        runTest {
+            val busy = TrackerHarness(this, checkpoints = InMemoryCheckpointStore(recoverable))
+            busy.showUi()
+            val slowDatabase = CompletableDeferred<Unit>()
+            busy.repository.getGate = slowDatabase
+            // Recovery has loaded the checkpoint and is still checking History when the user taps Start.
+            val recovery = async { busy.tracker.recoverInterruptedTrip() }
+            busy.runCurrent()
+            assertEquals(CommandResult.Ok, busy.tracker.startTrip())
+            busy.runCurrent()
+            busy.repository.getGate = null
+            slowDatabase.complete(Unit)
+            busy.runCurrent()
+            assertFalse(recovery.await())
+            assertEquals(TripPhase.RUNNING, busy.state.trip.phase)
+            assertEquals(recoverable.stats, assertNotNull(busy.repository.stored[recoverable.tripId]).stats)
+        }
+
+    @Test
+    fun `a database error while checking History keeps the checkpoint for later`() = runTest {
+        val store = InMemoryCheckpointStore(recoverable)
+        val h = TrackerHarness(this, checkpoints = store)
+        h.repository.getFailure = IOException("database locked")
+        assertFalse(h.tracker.recoverInterruptedTrip())
+        h.runCurrent()
+        assertEquals(recoverable, store.checkpoint, "not restored, not deleted")
+        // Next app start, the database works again: the trip comes back.
+        h.repository.getFailure = null
+        assertTrue(h.tracker.recoverInterruptedTrip())
+        assertEquals(TripPhase.PAUSED, h.state.trip.phase)
+    }
+
+    @Test
+    fun `a discarded trip whose checkpoint could not be deleted never comes back in the same session`() =
+        runTest {
+            val store = InMemoryCheckpointStore()
+            val h = TrackerHarness(this, checkpoints = store)
+            h.showUi()
+            h.tracker.startTrip()
+            h.drive(3, speedMps = 10f)
+            val discardedId = h.state.trip.tripId
+            store.failClears = true
+            assertEquals(CommandResult.Ok, h.tracker.discardTrip())
+            h.runCurrent()
+            assertEquals(discardedId, store.checkpoint?.tripId, "the delete failed")
+            assertFalse(h.tracker.recoverInterruptedTrip(), "but it is not recovered")
+            assertEquals(TripPhase.IDLE, h.state.trip.phase)
+
+            // A new trip replaces the slot without filing the discarded one into History.
+            h.tracker.startTrip()
+            h.runCurrent()
+            assertTrue(h.repository.stored.isEmpty())
+            assertEquals(h.state.trip.tripId, store.checkpoint?.tripId)
+
+            // Once the store works again the pending delete goes through.
+            store.failClears = false
+            h.tracker.discardTrip()
+            h.runCurrent()
+            assertNull(store.checkpoint)
+        }
 
     @Test
     fun `a checkpoint whose trip was already saved is cleared instead of restored`() = runTest {

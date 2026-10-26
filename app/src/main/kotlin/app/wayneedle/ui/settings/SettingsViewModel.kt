@@ -12,20 +12,26 @@ import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.ThemeMode
 import app.wayneedle.ui.STOP_TIMEOUT_MILLIS
 import app.wayneedle.ui.appContainer
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 @Immutable
 data class SettingsUiState(
     val settings: AppSettings = AppSettings.Default,
     val tripCount: Int = 0,
     val confirmingDeleteAll: Boolean = false,
+    /** "Delete all" did not go through (storage error); shown until acknowledged. */
+    val deleteFailed: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -33,13 +39,16 @@ class SettingsViewModel(
     private val tripRepository: TripRepository,
 ) : ViewModel() {
     private val confirmingDeleteAll = MutableStateFlow(false)
+    private val deleteFailed = MutableStateFlow(false)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
-        tripRepository.observeTrips().map { it.size },
+        // Unreadable storage shows no trips to delete instead of crashing the screen.
+        tripRepository.observeTrips().map { it.size }.catch { emit(0) },
         confirmingDeleteAll,
-    ) { settings, count, confirming ->
-        SettingsUiState(settings, count, confirming)
+        deleteFailed,
+    ) { settings, count, confirming, failed ->
+        SettingsUiState(settings, count, confirming, failed)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsUiState())
 
     fun setSpeedUnit(unit: SpeedUnit) {
@@ -64,8 +73,18 @@ class SettingsViewModel(
 
     fun confirmDeleteAll() {
         confirmingDeleteAll.update { false }
-        viewModelScope.launch { tripRepository.deleteAllTrips() }
+        viewModelScope.launch {
+            try {
+                withContext(NonCancellable) { tripRepository.deleteAllTrips() }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                deleteFailed.value = true
+            }
+        }
     }
+
+    fun dismissDeleteError() = deleteFailed.update { false }
 
     companion object {
         val Factory = viewModelFactory {

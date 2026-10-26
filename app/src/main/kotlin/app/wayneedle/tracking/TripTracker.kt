@@ -16,6 +16,7 @@ import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.domain.model.LocationSample
 import app.wayneedle.domain.model.TrackingState
 import app.wayneedle.domain.model.Trip
+import app.wayneedle.domain.model.TripCheckpoint
 import app.wayneedle.domain.model.TripPhase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -77,7 +78,9 @@ import kotlin.math.max
  * **Recovery** restores a checkpoint as PAUSED with `recovered = true`, never starts the foreground
  * service and never counts the unobserved gap (at most the last checkpoint interval of observed time is
  * lost as well). `recovered` is cleared by [resumeTrip]. A checkpoint whose trip already exists in the
- * repository (the process died between saving and clearing) is cleared instead of restored.
+ * repository (the process died between saving and clearing) is cleared instead of restored. If a new
+ * trip starts before an interrupted one was recovered (a tap on Start during the app's cold start, or a
+ * database error during recovery), the interrupted trip is filed into History rather than overwritten.
  */
 class TripTracker(
     private val locationSource: LocationSource,
@@ -114,9 +117,15 @@ class TripTracker(
     private var tickerJob: Job? = null
     private var activeTickerId = NO_JOB
 
-    private val checkpoints = CheckpointWriter(checkpointStore, scope) { generation ->
-        lock.withLock { generation == tripGeneration }
-    }
+    /** Trips the user discarded in this process; never preserved as interrupted trips. */
+    private val discardedTripIds = mutableSetOf<String>()
+
+    private val checkpoints = CheckpointWriter(
+        store = checkpointStore,
+        scope = scope,
+        isCurrentGeneration = { generation -> lock.withLock { generation == tripGeneration } },
+        preserveOrphan = ::preserveInterruptedTrip,
+    )
 
     private val mutableState = MutableStateFlow(lock.withLock { buildStateLocked(nowNanos()) })
     override val state: StateFlow<TrackingState> = mutableState.asStateFlow()
@@ -251,6 +260,7 @@ class TripTracker(
             if (finishing || (phase != TripPhase.RUNNING && phase != TripPhase.PAUSED)) {
                 return CommandResult.InvalidTransition(phase)
             }
+            engine.tripId?.let(discardedTripIds::add)
             engine.discard()
             tripGeneration++
             checkpoints.clear()
@@ -302,7 +312,9 @@ class TripTracker(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            false
+            // Unknown: restoring could overwrite a saved trip on Finish. Keep the checkpoint for the next
+            // start of the app, or for preservation when a new trip replaces it.
+            return false
         }
         lock.withLock {
             if (finishing || engine.phase != TripPhase.IDLE || tripGeneration != generationAtRequest) return false
@@ -316,6 +328,30 @@ class TripTracker(
             updateListenerLocked()
             publishLocked(now)
             return true
+        }
+    }
+
+    /**
+     * Files the checkpoint of an interrupted trip, about to be replaced by a newer trip's, into History as a
+     * finished trip ending at its last checkpoint. Skips trips that are already stored or were discarded.
+     */
+    private suspend fun preserveInterruptedTrip(orphan: TripCheckpoint) {
+        if (lock.withLock { orphan.tripId in discardedTripIds }) return
+        try {
+            if (tripRepository.getTrip(orphan.tripId) == null) {
+                tripRepository.saveTrip(
+                    Trip(
+                        id = orphan.tripId,
+                        startedAtEpochMillis = orphan.startedAtEpochMillis,
+                        endedAtEpochMillis = max(orphan.savedAtEpochMillis, orphan.startedAtEpochMillis),
+                        stats = orphan.stats,
+                    ),
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best effort; the checkpoint is replaced either way.
         }
     }
 

@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class CheckpointWriterTest {
     private fun checkpoint(durationMillis: Long) =
@@ -69,6 +70,59 @@ class CheckpointWriterTest {
         writer.save(checkpoint(2L), generation = 1L)
         runCurrent()
         assertEquals(checkpoint(2L), store.checkpoint)
+    }
+
+    @Test
+    fun `another trip's checkpoint is handed over before it is replaced`() = runTest {
+        val interrupted = checkpoint(7L).copy(tripId = "interrupted")
+        val store = InMemoryCheckpointStore(interrupted)
+        val preserved = mutableListOf<TripCheckpoint>()
+        val writer = CheckpointWriter(store, backgroundScope, preserveOrphan = { preserved += it }) { true }
+        writer.save(checkpoint(1L), generation = 1L)
+        writer.save(checkpoint(2L), generation = 1L)
+        runCurrent()
+        assertEquals(listOf(interrupted), preserved, "handed over exactly once")
+        assertEquals(checkpoint(2L), store.checkpoint)
+    }
+
+    @Test
+    fun `the same trip's checkpoint is simply replaced`() = runTest {
+        val store = InMemoryCheckpointStore(checkpoint(1L))
+        val preserved = mutableListOf<TripCheckpoint>()
+        val writer = CheckpointWriter(store, backgroundScope, preserveOrphan = { preserved += it }) { true }
+        writer.save(checkpoint(2L), generation = 1L)
+        runCurrent()
+        assertTrue(preserved.isEmpty())
+    }
+
+    @Test
+    fun `a failed clear is retried and hides the dead checkpoint meanwhile`() = runTest {
+        val store = InMemoryCheckpointStore(checkpoint(3L))
+        store.failClears = true
+        val preserved = mutableListOf<TripCheckpoint>()
+        val writer = CheckpointWriter(store, backgroundScope, preserveOrphan = { preserved += it }) { true }
+        writer.clear()
+        runCurrent()
+        assertEquals(checkpoint(3L), store.checkpoint, "the delete failed")
+        assertNull(writer.load(), "but the cleared checkpoint is not offered for recovery")
+
+        store.failClears = false
+        assertNull(writer.load())
+        assertNull(store.checkpoint, "retried before the next operation")
+        assertTrue(preserved.isEmpty())
+    }
+
+    @Test
+    fun `a cleared trip is not handed over when a new trip replaces it`() = runTest {
+        val store = InMemoryCheckpointStore(checkpoint(3L))
+        store.failClears = true
+        val preserved = mutableListOf<TripCheckpoint>()
+        val writer = CheckpointWriter(store, backgroundScope, preserveOrphan = { preserved += it }) { true }
+        writer.clear()
+        writer.save(checkpoint(1L).copy(tripId = "next"), generation = 1L)
+        runCurrent()
+        assertTrue(preserved.isEmpty(), "the old trip was finished or discarded, not interrupted")
+        assertEquals("next", store.checkpoint?.tripId)
     }
 
     @Test
