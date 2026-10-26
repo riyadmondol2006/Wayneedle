@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="160" height="160" role="img" aria-label="Wayneedle logo: a speedometer dial with an orange arc and needle">
+  <rect x="18" y="18" width="72" height="72" rx="18" fill="#101418"/>
+  <path d="M34.91,73.09 A27,27 0 1 1 73.09,73.09" fill="none" stroke="#2B3640" stroke-width="5" stroke-linecap="round"/>
+  <path d="M34.91,73.09 A27,27 0 0 1 68.47,31.2" fill="none" stroke="#FF6B35" stroke-width="5" stroke-linecap="round"/>
+  <path d="M40.21,67.79 L38.3,69.7 M34.5,54 L31.8,54 M40.21,40.21 L38.3,38.3 M54,34.5 L54,31.8 M67.79,40.21 L69.7,38.3 M73.5,54 L76.2,54 M67.79,67.79 L69.7,69.7" fill="none" stroke="#8795A1" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M58.06,53.02 L67.82,33.16 L66.97,32.62 L53.16,49.91 Z" fill="#FFB84D"/>
+  <path d="M49.6,54 a4.4,4.4 0 1 0 8.8,0 a4.4,4.4 0 1 0 -8.8,0 Z" fill="#FFE5BD"/>
+</svg>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/wayneedle-logo.svg" width="128" height="128" alt="Wayneedle app icon: a speedometer dial with an orange needle">
+</p>
+
 # Wayneedle – GPS Speedometer & Trip Tracker for Android (offline, open source)
 
 [![Latest release](https://img.shields.io/github/v/release/riyadmondol2006/Wayneedle?label=download&sort=semver)](https://github.com/riyadmondol2006/Wayneedle/releases/latest)
@@ -5,6 +9,7 @@
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](#requirements)
 [![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin&logoColor=white)](#toolchain)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4)](#architecture)
+[![Release build](https://github.com/riyadmondol2006/Wayneedle/actions/workflows/release.yml/badge.svg)](https://github.com/riyadmondol2006/Wayneedle/actions/workflows/release.yml)
 
 **Wayneedle is a free, open-source GPS speedometer and trip computer for Android.** It shows your live speed in
 km/h or mph on a large analog-and-digital speedometer, records trips (distance, top speed, average and moving
@@ -16,7 +21,27 @@ Use it as a car speedometer, a cycling computer, a running or hiking speed track
 to check your real speed against the car's speedometer.
 
 [Download the latest APK](https://github.com/riyadmondol2006/Wayneedle/releases/latest) ·
-[Features](#features) · [FAQ](#faq) · [Privacy](#privacy) · [Build from source](#building)
+[Screenshots](#screenshots) · [Features](#features) · [FAQ](#faq) · [Privacy](#privacy) ·
+[Build from source](#building)
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/screenshots/dashboard.png" width="240" alt="Wayneedle dashboard recording a trip at 76 km/h, heading north-east, with distance, active time, top speed, average without pauses, moving average, moving time and total time"><br><b>Live speed and trip computer</b></td>
+    <td align="center"><img src="docs/images/screenshots/speed-alert.png" width="240" alt="Speed alert: the speed turns red at 88 km/h with an Above 80 km/h warning and the limit marked on the dial"><br><b>Speed alert</b></td>
+    <td align="center"><img src="docs/images/screenshots/hud-mode.png" width="240" alt="HUD mode: large white speed on black for reading in the windscreen"><br><b>HUD mode</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/screenshots/history.png" width="240" alt="History with lifetime totals: distance, active time, top speed and number of trips, and a list of trips by day"><br><b>History and lifetime totals</b></td>
+    <td align="center"><img src="docs/images/screenshots/trip-details.png" width="240" alt="Trip details: distance, active time, top speed, averages, moving time, ascent, descent and total time"><br><b>Trip details</b></td>
+    <td align="center"><img src="docs/images/screenshots/settings.png" width="240" alt="Settings: km/h or mph, speed alert limit and optional beep"><br><b>Settings</b></td>
+  </tr>
+</table>
+
+<sub>Real screenshots from a Google Pixel 6 Pro (Android 17, dark theme, brand colours). The trip was driven with
+scripted GPS fixes, and the earlier trips in History are sample data; only the phone's status bar was cropped.
+Numbers follow the phone's language settings, here with a decimal comma.</sub>
 
 ## Features
 
@@ -55,21 +80,13 @@ to check your real speed against the car's speedometer.
 * **Never loses a trip**: if Android kills the app or the battery dies, the trip comes back paused; a new trip
   started first files the interrupted one into History.
 * **Tells you what would stop it**: warnings when battery use is restricted, Battery Saver turns GPS off with the
-  screen off, notifications are blocked, or Android refuses background recording.
+  screen off (you can close this one), notifications are blocked, or Android refuses background recording.
 
 ### Private by design
 
 * No accounts, no analytics, no crash reporters, no ads, no third-party SDKs, no cloud backup.
 * Location is used only on the phone; trips store summary numbers, never coordinates or routes.
 * The only network use is the optional daily **update check** against this GitHub repository (see [Privacy](#privacy)).
-
-## Screenshots
-
-<!-- SCREENSHOTS-PLACEHOLDER
-     Add real screenshots captured on a Google Pixel 6 Pro here (docs/images/ is a suitable location).
-     Do not add mock-ups or edited images. -->
-
-_Screenshots have not been added yet._
 
 ## Download and updates
 
@@ -227,18 +244,21 @@ Maven repository and Maven Central, so it needs a network connection.
 
 This section is only updated with results that are recorded in [docs/TESTING.md](docs/TESTING.md).
 
-* On a development machine: the debug sources compile with warnings as errors, 471 JVM tests pass, Android Lint and
-  the ktlint check pass, and a release build signed exactly as the release workflow does it verifies with `apksigner`.
-* On a Google Pixel 6 Pro (Android 17) on 2026-10-26: all 96 instrumentation tests pass, including recording with
-  the screen off in forced deep Doze, the database migration from schema 1 to 2, and the HUD screen. By hand: the
+* On a development machine: the debug sources compile with warnings as errors, 473 JVM tests pass, and Android Lint
+  and the ktlint check pass.
+* On GitHub: the CI and release workflows passed on their first run, and the release workflow published a signed
+  `v1.0.1` whose signature it verified with `apksigner`.
+* On a Google Pixel 6 Pro (Android 17) on 2026-10-26: all 97 instrumentation tests pass, including recording with
+  the screen off in forced deep Doze, the database migration from schema 1 to 2, the HUD screen and closing the
+  Battery Saver warning. By hand: the
   speed alert (red dial and one vibration per crossing, also from the background), CSV export through the system
   file picker, lifetime totals, the double-tap guard, the notifications-off warning, rotation keeping the GPS
   listener, keep-screen-on only while moving, recovery of a trip across an app update, heading, GPS details, HUD
   mode, a real update check against GitHub, two minutes stationary with a real satellite fix (0.00 km recorded), and
   a 5-minute screen-off battery measurement. Moving trips used **scripted fixes**, not satellite measurements.
 * **Not yet verified**: speed and distance accuracy with real satellites while moving (walking, driving, tunnels),
-  long trips, Task Manager "Stop", swiping the notification away on Android 17, the update popup with a real
-  published release, and the release workflow on GitHub (it runs on the first push).
+  long trips, Task Manager "Stop", swiping the notification away on Android 17, and the update popup with a real
+  published release.
 * No other device models, Android versions or emulators have been tested.
 
 ## Project structure

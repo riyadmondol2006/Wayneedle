@@ -186,7 +186,7 @@ subcommand (below), which names the device explicitly, or unplug the other phone
 
 ### Running the instrumentation tests
 
-The suite lives in `app/src/androidTest` (96 tests: Room DAOs and migrations, the notification, every UI screen
+The suite lives in `app/src/androidTest` (97 tests: Room DAOs and migrations, the notification, every UI screen
 including HUD mode, the end-to-end location tests, recording in deep Doze, and parsing of GitHub release responses). With another phone attached, run it with an explicit serial instead of
 `connectedDebugAndroidTest`:
 
@@ -291,16 +291,18 @@ record device serial numbers, coordinates or GPS tracks.
 | 2026-10-26 | da16377 (before commit) | same | `GitHubReleaseParsingTest`; Settings › Updates › "Check now" | Pass (3/3) | The real request reached GitHub and reported "You have the latest version" (no release published yet). The popup for a newer release has not been seen on a device. |
 | 2026-10-26 | f866d40 (before commit) | same | Full instrumentation suite, 96 tests | Pass (96/96) | |
 | 2026-10-26 | f866d40 (before commit) | same | Manual with scripted fixes: heading after the unit, GPS details dialog, HUD mode (mirror, full screen, exit), speed alert from the background service | Pass | Screenshots and the vibrator log. With the app in the background the alert vibrated once on crossing, and once more on returning to the app while still above the limit. |
+| 2026-10-26 | bec343c + uncommitted tree | same | README screenshots: a 6-minute scripted trip (temporary driver test, not committed) plus sample trips inserted for History | Pass | Dashboard, speed alert, HUD, GPS details, finished summary, History, trip details and Settings captured. Running `uiautomator dump` during the instrumentation restarted the app process; the trip had already been saved. App data cleared afterwards. |
+| 2026-10-26 | bec343c + uncommitted tree | same | `DashboardScreenTest` (25 tests), then the full instrumentation suite (97 tests) | Pass (25/25, 97/97) | Includes the new test for closing the Battery Saver warning. Battery Saver itself was not switched on, so the real warning was not seen on the phone. |
 
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests, with read-only permissions, JDK 17
 (Temurin) and every action pinned to a full commit SHA. It runs
 `./gradlew testDebugUnitTest lintDebug staticAnalysis assembleDebug` and uploads the reports when a step fails. It
-does not start an emulator and does not run instrumentation tests. The same Gradle command was run locally on
-JDK 17; the workflow itself has been linted but has not yet run on GitHub.
+does not start an emulator and does not run instrumentation tests. Its first run on GitHub (2026-10-26, commit
+`bec343c`) passed.
 
 `.github/workflows/release.yml` runs on every push to `main`: the same tests and checks, then a signed release
-build published as a GitHub Release ([RELEASING.md](RELEASING.md)). The signing and version steps were checked
-locally with a throwaway key (`apksigner verify` passed, version code and name taken from the run number); the
-workflow has not yet run on GitHub.
+build published as a GitHub Release ([RELEASING.md](RELEASING.md)). Its first run on GitHub (2026-10-26, commit
+`bec343c`) passed the checks, verified the APK signature with `apksigner` (APK Signature Scheme v2, one signer) and
+published `v1.0.1` with the APK and its SHA-256 file, marked as the latest release.
