@@ -47,7 +47,14 @@ object PreviewData {
     private const val EARLIER_PAUSE_MILLIS = 300_000L
 
     private val runningStats =
-        TripStats(distanceMeters = 27_800.0, activeDurationMillis = 2_292_000L, maxSpeedMps = 31.4f)
+        TripStats(
+            distanceMeters = 27_800.0,
+            activeDurationMillis = 2_292_000L,
+            maxSpeedMps = 31.4f,
+            movingDurationMillis = 2_040_000L,
+            ascentMeters = 124.0,
+            descentMeters = 97.0,
+        )
 
     fun live(speedMps: Float) = LiveSpeed.Available(smoothedMps = speedMps, rawMps = speedMps)
 

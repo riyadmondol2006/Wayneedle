@@ -54,6 +54,7 @@ private val DarkScrim = AndroidColor.argb(0x80, 0x1B, 0x1B, 0x1B)
 fun WayneedleApp() {
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory)
     val settings by appViewModel.settings.collectAsStateWithLifecycle()
+    val keepAwake by appViewModel.keepAwake.collectAsStateWithLifecycle()
     val current = settings
     if (current == null) {
         // Settings load in a few milliseconds; hold a plain window-coloured frame instead of flashing defaults.
@@ -62,7 +63,7 @@ fun WayneedleApp() {
     }
     WayneedleTheme(themeMode = current.themeMode, dynamicColor = current.dynamicColor) {
         SystemBarsEffect(darkTheme = current.themeMode.isDark())
-        KeepScreenOnEffect(enabled = current.keepScreenOn)
+        KeepScreenOnEffect(enabled = current.keepScreenOn && keepAwake)
         WayneedleScaffold()
     }
 }
@@ -80,7 +81,7 @@ private fun SystemBarsEffect(darkTheme: Boolean) {
     }
 }
 
-/** Applies "keep screen on" only while the app is in the foreground. */
+/** Applies "keep screen on" only while the app is in the foreground and the policy wants the display on. */
 @Composable
 private fun KeepScreenOnEffect(enabled: Boolean) {
     val view = LocalView.current

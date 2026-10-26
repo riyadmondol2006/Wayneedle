@@ -64,11 +64,13 @@ class HistoryTotalsAndCsvTest {
         )
         val lines = csv.split("\r\n")
         assertEquals(
-            "started,ended,distance_km,active_seconds,total_seconds,top_speed_kmh,average_speed_kmh,trip_id",
+            "started,ended,distance_km,active_seconds,total_seconds,top_speed_kmh,average_speed_kmh," +
+                "moving_seconds,moving_average_speed_kmh,ascent_m,descent_m,trip_id",
             lines[0],
         )
-        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:30:00Z,12.346,1800,1800,119.9,24.7,older", lines[1])
-        assertEquals("2026-10-25T13:00:00Z,2026-10-25T13:15:00Z,5.000,600,900,72.0,30.0,newer", lines[2])
+        // Trips recorded before moving time and elevation existed leave those columns empty.
+        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:30:00Z,12.346,1800,1800,119.9,24.7,,,,,older", lines[1])
+        assertEquals("2026-10-25T13:00:00Z,2026-10-25T13:15:00Z,5.000,600,900,72.0,30.0,,,,,newer", lines[2])
         assertEquals("", lines[3], "ends with a line break")
         assertEquals(4, lines.size)
     }
@@ -78,7 +80,7 @@ class HistoryTotalsAndCsvTest {
         Locale.setDefault(Locale.GERMANY)
         val csv = tripsToCsv(listOf(trip("t", 0L, TripStats(1_500.0, 60_000L, 10f))), SpeedUnit.MPH, ZoneOffset.UTC)
         val row = csv.split("\r\n")[1]
-        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:01:00Z,0.932,60,60,22.4,55.9,t", row)
+        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:01:00Z,0.932,60,60,22.4,55.9,,,,,t", row)
         assertEquals("distance_mi", csv.split("\r\n")[0].split(",")[2])
     }
 
@@ -89,11 +91,28 @@ class HistoryTotalsAndCsvTest {
             SpeedUnit.KMH,
             ZoneOffset.UTC,
         )
-        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:01:00Z,,60,60,,,\"odd,\"\"id\"\"\"", csv.split("\r\n")[1])
+        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:01:00Z,,60,60,,,,,,,\"odd,\"\"id\"\"\"", csv.split("\r\n")[1])
     }
 
     @Test
     fun `the suggested file name carries the local date`() {
         assertEquals("wayneedle-trips-2026-10-25.csv", csvFileName(start, ZoneOffset.UTC))
+    }
+
+    @Test
+    fun `moving time, moving average and elevation are exported in the user's unit`() {
+        val stats = TripStats(
+            distanceMeters = 12_000.0,
+            activeDurationMillis = 1_200_000L,
+            maxSpeedMps = 20f,
+            movingDurationMillis = 1_000_000L,
+            ascentMeters = 100.0,
+            descentMeters = 30.5,
+        )
+        val metric = tripsToCsv(listOf(trip("t", 0L, stats)), SpeedUnit.KMH, ZoneOffset.UTC).split("\r\n")[1]
+        assertEquals("2026-10-25T12:00:00Z,2026-10-25T12:20:00Z,12.000,1200,1200,72.0,36.0,1000,43.2,100,31,t", metric)
+        val imperial = tripsToCsv(listOf(trip("t", 0L, stats)), SpeedUnit.MPH, ZoneOffset.UTC).split("\r\n")
+        assertEquals("ascent_ft", imperial[0].split(",")[9])
+        assertEquals("328", imperial[1].split(",")[9])
     }
 }

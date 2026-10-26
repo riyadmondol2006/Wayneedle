@@ -2,10 +2,12 @@ package app.wayneedle.ui.settings
 
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.ThemeMode
+import app.wayneedle.testing.FakeTimeSource
 import app.wayneedle.ui.AppViewModel
 import app.wayneedle.ui.MainDispatcherRule
 import app.wayneedle.ui.keepActive
 import app.wayneedle.ui.preview.FakeSettingsRepository
+import app.wayneedle.ui.preview.FakeTrackingController
 import app.wayneedle.ui.preview.FakeTripRepository
 import app.wayneedle.ui.preview.PreviewData
 import kotlinx.coroutines.test.runTest
@@ -75,7 +77,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `app view model exposes settings once loaded`() = runTest {
-        val vm = AppViewModel(settings)
+        val vm = AppViewModel(settings, FakeTrackingController(), FakeTimeSource())
         assertNull(vm.settings.value)
         keepActive(vm.settings)
         settings.setThemeMode(ThemeMode.LIGHT)

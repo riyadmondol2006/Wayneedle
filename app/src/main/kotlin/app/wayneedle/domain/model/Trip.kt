@@ -13,15 +13,31 @@ enum class TripPhase {
  * @property distanceMeters distance from accepted GPS fixes (never includes paused time/movement).
  * @property activeDurationMillis time spent RUNNING; paused time is excluded.
  * @property maxSpeedMps highest accepted GPS speed recorded while RUNNING.
+ * @property movingDurationMillis the part of the active time spent actually moving: the time of the
+ *   stretches that counted as distance, so stops at lights and a parked phone are left out. Null for trips
+ *   recorded before it was measured.
+ * @property ascentMeters total climb while moving, from GPS altitude with hysteresis; approximate (phone
+ *   altitude is a few metres less precise than position). Null when the receiver gave no usable altitude.
+ * @property descentMeters total descent, like [ascentMeters].
  */
 data class TripStats(
     val distanceMeters: Double = 0.0,
     val activeDurationMillis: Long = 0L,
     val maxSpeedMps: Float = 0f,
+    val movingDurationMillis: Long? = null,
+    val ascentMeters: Double? = null,
+    val descentMeters: Double? = null,
 ) {
-    /** Total distance ÷ active duration, as specified. Zero until some active time has elapsed. */
+    /** Total distance ÷ active duration (paused time left out). Zero until some active time has elapsed. */
     val averageSpeedMps: Float
         get() = if (activeDurationMillis <= 0L) 0f else (distanceMeters / (activeDurationMillis / 1_000.0)).toFloat()
+
+    /** Total distance ÷ moving time: the average while actually under way. Null until something moved. */
+    val movingAverageSpeedMps: Float?
+        get() {
+            val moving = movingDurationMillis ?: return null
+            return if (moving <= 0L) null else (distanceMeters / (moving / 1_000.0)).toFloat()
+        }
 
     /**
      * Wall-clock time from [startedAtEpochMillis] to [endEpochMillis], paused time included. Never less than

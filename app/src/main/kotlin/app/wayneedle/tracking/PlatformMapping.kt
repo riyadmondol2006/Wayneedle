@@ -19,6 +19,14 @@ internal fun locationSampleOf(
     speedAccuracyMps: Float,
     elapsedRealtimeNanos: Long,
     epochMillis: Long,
+    hasAltitude: Boolean = false,
+    altitudeM: Double = 0.0,
+    hasVerticalAccuracy: Boolean = false,
+    verticalAccuracyM: Float = 0f,
+    hasBearing: Boolean = false,
+    bearingDeg: Float = 0f,
+    hasBearingAccuracy: Boolean = false,
+    bearingAccuracyDeg: Float = 0f,
 ): LocationSample = LocationSample(
     latitude = latitude,
     longitude = longitude,
@@ -27,6 +35,10 @@ internal fun locationSampleOf(
     speedAccuracyMps = if (hasSpeedAccuracy) speedAccuracyMps else null,
     elapsedRealtimeNanos = elapsedRealtimeNanos,
     epochMillis = epochMillis,
+    altitudeM = if (hasAltitude) altitudeM else null,
+    verticalAccuracyM = if (hasVerticalAccuracy) verticalAccuracyM else null,
+    bearingDeg = if (hasBearing) bearingDeg else null,
+    bearingAccuracyDeg = if (hasBearingAccuracy) bearingAccuracyDeg else null,
 )
 
 /** Satellite counts from a GNSS status: [satelliteCount] in view, those flagged by [usedInFix] used. */

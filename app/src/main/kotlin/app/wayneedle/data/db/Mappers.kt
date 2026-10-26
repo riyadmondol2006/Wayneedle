@@ -10,6 +10,7 @@ import app.wayneedle.domain.model.TripStats
  *
  * Trips (history): lenient in both directions. A non-finite or negative measurement becomes zero, a
  * negative timestamp becomes zero, and an end time before the start time is raised to the start time.
+ * The optional measurements of schema 2 (moving time, ascent, descent) become null ("not measured") instead.
  * One bad field must never hide or crash the whole history. Only a blank id cannot be repaired: writing
  * one is a programming error (IllegalArgumentException), reading one skips the row (null).
  *
@@ -29,6 +30,10 @@ private fun Long.orZeroIfNegative(): Long = if (this > 0L) this else 0L
 
 private fun Double.isValidMeasurement(): Boolean = isFinite() && this >= 0.0
 
+private fun Double?.orNullIfInvalid(): Double? = this?.takeIf { it.isValidMeasurement() }
+
+private fun Long?.orNullIfNegative(): Long? = this?.takeIf { it >= 0L }
+
 private fun Float.isValidMeasurement(): Boolean = isFinite() && this >= 0f
 
 internal fun Trip.toEntity(): TripEntity {
@@ -40,6 +45,9 @@ internal fun Trip.toEntity(): TripEntity {
         distanceMeters = stats.distanceMeters,
         activeDurationMillis = stats.activeDurationMillis,
         maxSpeedMps = stats.maxSpeedMps,
+        movingDurationMillis = stats.movingDurationMillis,
+        ascentMeters = stats.ascentMeters,
+        descentMeters = stats.descentMeters,
     )
 }
 
@@ -53,6 +61,9 @@ internal fun TripEntity.toDomainOrNull(): Trip? {
         distanceMeters = distanceMeters,
         activeDurationMillis = activeDurationMillis,
         maxSpeedMps = maxSpeedMps,
+        movingDurationMillis = movingDurationMillis,
+        ascentMeters = ascentMeters,
+        descentMeters = descentMeters,
     )
     return Trip(
         id = clean.id,
@@ -62,6 +73,9 @@ internal fun TripEntity.toDomainOrNull(): Trip? {
             distanceMeters = clean.distanceMeters,
             activeDurationMillis = clean.activeDurationMillis,
             maxSpeedMps = clean.maxSpeedMps,
+            movingDurationMillis = clean.movingDurationMillis,
+            ascentMeters = clean.ascentMeters,
+            descentMeters = clean.descentMeters,
         ),
     )
 }
@@ -73,6 +87,9 @@ private fun cleanedTripEntity(
     distanceMeters: Double,
     activeDurationMillis: Long,
     maxSpeedMps: Float,
+    movingDurationMillis: Long?,
+    ascentMeters: Double?,
+    descentMeters: Double?,
 ): TripEntity {
     val started = startedAtEpochMillis.orZeroIfNegative()
     return TripEntity(
@@ -82,6 +99,9 @@ private fun cleanedTripEntity(
         distanceMeters = distanceMeters.orZeroIfInvalid(),
         activeDurationMillis = activeDurationMillis.orZeroIfNegative(),
         maxSpeedMps = maxSpeedMps.orZeroIfInvalid(),
+        movingDurationMillis = movingDurationMillis.orNullIfNegative(),
+        ascentMeters = ascentMeters.orNullIfInvalid(),
+        descentMeters = descentMeters.orNullIfInvalid(),
     )
 }
 
@@ -100,6 +120,9 @@ internal fun TripCheckpoint.toEntity(): TripCheckpointEntity {
         activeDurationMillis = stats.activeDurationMillis.orZeroIfNegative(),
         maxSpeedMps = stats.maxSpeedMps.orZeroIfInvalid(),
         savedAtEpochMillis = savedAtEpochMillis.orZeroIfNegative(),
+        movingDurationMillis = stats.movingDurationMillis.orNullIfNegative(),
+        ascentMeters = stats.ascentMeters.orNullIfInvalid(),
+        descentMeters = stats.descentMeters.orNullIfInvalid(),
     )
 }
 
@@ -112,7 +135,10 @@ internal fun TripCheckpointEntity.toDomainOrNull(): TripCheckpoint? {
         savedAtEpochMillis >= 0L &&
         distanceMeters.isValidMeasurement() &&
         activeDurationMillis >= 0L &&
-        maxSpeedMps.isValidMeasurement()
+        maxSpeedMps.isValidMeasurement() &&
+        (movingDurationMillis == null || movingDurationMillis >= 0L) &&
+        (ascentMeters == null || ascentMeters.isValidMeasurement()) &&
+        (descentMeters == null || descentMeters.isValidMeasurement())
     if (!valid) return null
     return TripCheckpoint(
         tripId = tripId,
@@ -122,6 +148,9 @@ internal fun TripCheckpointEntity.toDomainOrNull(): TripCheckpoint? {
             distanceMeters = distanceMeters,
             activeDurationMillis = activeDurationMillis,
             maxSpeedMps = maxSpeedMps,
+            movingDurationMillis = movingDurationMillis,
+            ascentMeters = ascentMeters,
+            descentMeters = descentMeters,
         ),
         savedAtEpochMillis = savedAtEpochMillis,
     )

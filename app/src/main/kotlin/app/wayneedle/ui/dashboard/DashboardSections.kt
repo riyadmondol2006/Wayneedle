@@ -28,6 +28,7 @@ import app.wayneedle.R
 import app.wayneedle.domain.model.GpsStatus
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TripPhase
+import app.wayneedle.domain.model.TripStats
 import app.wayneedle.ui.components.ConfirmDialog
 import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonRow
@@ -254,7 +255,7 @@ private fun TileRows(
     }
 }
 
-/** The trip numbers: distance, active time, current/top/average speed and total time. While no trip exists they show "—" so the layout stays put when a trip starts. */
+/** The trip numbers: distance, active time, current/top/average speed, moving average, moving and total time. While no trip exists they show "—" so the layout stays put when a trip starts. */
 @Composable
 internal fun TripStatsPanel(state: DashboardUiState, formatter: UiFormatter, modifier: Modifier = Modifier) {
     val trip = state.trip
@@ -316,17 +317,39 @@ internal fun TripStatsPanel(state: DashboardUiState, formatter: UiFormatter, mod
         TileRows(columns = columnsFor(2), tiles = headlineTiles)
         TileRows(columns = columnsFor(3), tiles = speedTiles)
         TileRows(
-            columns = 1,
-            tiles = listOf { tileModifier ->
-                TotalTimeStatTile(
-                    trip.totalDurationMillis.takeIf {
-                        hasTrip
-                    },
-                    formatter,
-                    tileModifier,
-                    dimmed = !hasTrip,
-                )
-            },
+            columns = columnsFor(3),
+            tiles = listOf(
+                { tileModifier ->
+                    SpeedStatTile(
+                        stringResource(R.string.stat_moving_average),
+                        stats.movingAverageSpeedMps.takeIf { hasTrip },
+                        unit,
+                        formatter,
+                        tileModifier,
+                        dimmed = !hasTrip,
+                    )
+                },
+                { tileModifier ->
+                    DurationStatTile(
+                        millis = stats.movingDurationMillis.takeIf { hasTrip },
+                        formatter = formatter,
+                        modifier = tileModifier,
+                        large = false,
+                        dimmed = !hasTrip,
+                        labelRes = R.string.stat_moving_time,
+                    )
+                },
+                { tileModifier ->
+                    DurationStatTile(
+                        millis = trip.totalDurationMillis.takeIf { hasTrip },
+                        formatter = formatter,
+                        modifier = tileModifier,
+                        large = false,
+                        dimmed = !hasTrip,
+                        labelRes = R.string.stat_total_time_short,
+                    )
+                },
+            ),
         )
     }
 }
@@ -521,6 +544,40 @@ internal fun RecoveredTripCard(
     }
 }
 
+/** Every per-trip figure as tiles, for the summary card and the trip details. Elevation only when measured. */
+@Composable
+internal fun tripDetailTiles(
+    stats: TripStats,
+    unit: SpeedUnit,
+    formatter: UiFormatter,
+    topLabel: String = stringResource(R.string.stat_top),
+    averageLabel: String = stringResource(R.string.stat_average),
+): List<@Composable (Modifier) -> Unit> {
+    val movingAverageLabel = stringResource(R.string.stat_moving_average)
+    val ascentLabel = stringResource(R.string.stat_ascent)
+    val descentLabel = stringResource(R.string.stat_descent)
+    return buildList {
+        add { m -> DistanceStatTile(stats.distanceMeters, unit, formatter, m) }
+        add { m -> DurationStatTile(stats.activeDurationMillis, formatter, m) }
+        add { m -> SpeedStatTile(topLabel, stats.maxSpeedMps, unit, formatter, m) }
+        add { m -> SpeedStatTile(averageLabel, stats.averageSpeedMps, unit, formatter, m) }
+        add { m -> SpeedStatTile(movingAverageLabel, stats.movingAverageSpeedMps, unit, formatter, m) }
+        add { m ->
+            DurationStatTile(
+                stats.movingDurationMillis,
+                formatter,
+                m,
+                large = false,
+                labelRes = R.string.stat_moving_time,
+            )
+        }
+        if (stats.ascentMeters != null || stats.descentMeters != null) {
+            add { m -> ElevationStatTile(ascentLabel, stats.ascentMeters, unit, formatter, m) }
+            add { m -> ElevationStatTile(descentLabel, stats.descentMeters, unit, formatter, m) }
+        }
+    }
+}
+
 @Composable
 internal fun TripSummaryCard(
     state: DashboardUiState,
@@ -562,12 +619,7 @@ internal fun TripSummaryCard(
             val averageLabel = stringResource(R.string.stat_average)
             TileRows(
                 columns = columnsFor(2),
-                tiles = listOf<@Composable (Modifier) -> Unit>(
-                    { m -> DistanceStatTile(trip.stats.distanceMeters, unit, formatter, m) },
-                    { m -> DurationStatTile(trip.stats.activeDurationMillis, formatter, m) },
-                    { m -> SpeedStatTile(topLabel, trip.stats.maxSpeedMps, unit, formatter, m) },
-                    { m -> SpeedStatTile(averageLabel, trip.stats.averageSpeedMps, unit, formatter, m) },
-                ),
+                tiles = tripDetailTiles(trip.stats, unit, formatter, topLabel, averageLabel),
             )
             TileRows(
                 columns = 1,

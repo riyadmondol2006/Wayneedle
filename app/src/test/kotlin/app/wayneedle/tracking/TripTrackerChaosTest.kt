@@ -533,8 +533,9 @@ class TripTrackerChaosTest {
                 check(stats.distanceMeters >= before.distanceMeters - EPSILON_M) { "distance went backwards" }
                 check(stats.activeDurationMillis >= before.activeDurationMillis) { "active time went backwards" }
                 check(stats.maxSpeedMps >= before.maxSpeedMps) { "top speed went backwards" }
-                // The published state can lag the clock by up to one tick.
-                check(stats.activeDurationMillis - before.activeDurationMillis <= elapsed + config.tickIntervalMillis) {
+                // The published state can lag the clock by up to one (background) tick.
+                val lag = maxOf(config.tickIntervalMillis, config.backgroundTickIntervalMillis)
+                check(stats.activeDurationMillis - before.activeDurationMillis <= elapsed + lag) {
                     "counted ${stats.activeDurationMillis - before.activeDurationMillis} ms of active time in $elapsed ms"
                 }
                 val wasRecording = previous.phase == TripPhase.RUNNING || trip.phase == TripPhase.RUNNING

@@ -14,6 +14,12 @@ package app.wayneedle.domain.model
  * @property elapsedRealtimeNanos monotonic timestamp (`SystemClock.elapsedRealtimeNanos` basis).
  *   Use this for freshness checks and time deltas; never compare it to wall-clock time.
  * @property epochMillis wall-clock UTC time of the fix, for display/persistence only.
+ * @property altitudeM height in metres (WGS-84 ellipsoid, as the receiver reports it), or null if unknown.
+ *   Differences between fixes are meaningful; the absolute value is not height above sea level.
+ * @property verticalAccuracyM 68 % confidence of [altitudeM] in metres, or null if unknown.
+ * @property bearingDeg course over ground in degrees clockwise from true north, or null if unknown.
+ *   Only meaningful while moving.
+ * @property bearingAccuracyDeg 68 % confidence of [bearingDeg] in degrees, or null if unknown.
  */
 data class LocationSample(
     val latitude: Double,
@@ -23,4 +29,8 @@ data class LocationSample(
     val speedAccuracyMps: Float?,
     val elapsedRealtimeNanos: Long,
     val epochMillis: Long,
+    val altitudeM: Double? = null,
+    val verticalAccuracyM: Float? = null,
+    val bearingDeg: Float? = null,
+    val bearingAccuracyDeg: Float? = null,
 )

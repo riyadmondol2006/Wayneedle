@@ -75,7 +75,9 @@ class DashboardScreenTest {
         show(PreviewData.dashboard(PreviewData.idleStationary))
         rule.onNodeWithText(string(R.string.stat_distance), useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(string(R.string.stat_active_time), useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText(string(R.string.stat_total_time), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_total_time_short), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_moving_time), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_moving_average), useUnmergedTree = true).assertIsDisplayed()
     }
 
     // ---- running / paused -----------------------------------------------------------------------------------------

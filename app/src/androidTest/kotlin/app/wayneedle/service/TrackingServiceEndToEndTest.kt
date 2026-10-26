@@ -49,6 +49,7 @@ class TrackingServiceEndToEndTest {
     private val tracker = container.trackingController
 
     private var mockProviderAdded = false
+    private val startedTripIds = mutableSetOf<String>()
     private var activity: ActivityScenario<ComponentActivity>? = null
     private var latitude = 52.0
     private var savedTripId: String? = null
@@ -85,14 +86,21 @@ class TrackingServiceEndToEndTest {
         activity = ActivityScenario.launch(ComponentActivity::class.java)
         tracker.refreshEnvironment()
         tracker.setUiVisible(true)
+        val phase = tracker.state.value.trip.phase
+        assumeTrue(
+            "A trip is in progress in the app on this device; finish or discard it before running this test",
+            phase == TripPhase.IDLE || phase == TripPhase.FINISHED,
+        )
     }
 
     @After
     fun tearDown() {
         // Leave nothing behind: no running trip, no service, no stored test trip, no mock provider.
-        val phase = tracker.state.value.trip.phase
-        if (phase == TripPhase.RUNNING || phase == TripPhase.PAUSED) tracker.discardTrip()
-        tracker.dismissFinished()
+        // Only ever discard the trip this test started.
+        val trip = tracker.state.value.trip
+        val ours = trip.tripId != null && trip.tripId in startedTripIds
+        if (ours && (trip.phase == TripPhase.RUNNING || trip.phase == TripPhase.PAUSED)) tracker.discardTrip()
+        if (ours) tracker.dismissFinished()
         tracker.setUiVisible(false)
         savedTripId?.let { id -> runBlocking { container.tripRepository.deleteTrip(id) } }
         activity?.close()
@@ -109,6 +117,7 @@ class TrackingServiceEndToEndTest {
     fun theForegroundServiceKeepsTheTripAliveInTheBackgroundAndObeysTheNotification() {
         pushUntilListening()
         assertEquals(CommandResult.Ok, tracker.startTrip())
+        tracker.state.value.trip.tripId?.let(startedTripIds::add)
 
         // 1. The service promotes itself and posts the ongoing notification.
         val recording = awaitNotification("recording notification") {
@@ -171,6 +180,7 @@ class TrackingServiceEndToEndTest {
         // Regression for ForegroundServiceDidNotStartInTimeException: stopService() before startForeground().
         pushUntilListening()
         assertEquals(CommandResult.Ok, tracker.startTrip())
+        tracker.state.value.trip.tripId?.let(startedTripIds::add)
         val discarded = tracker.discardTrip()
         assertEquals(CommandResult.Ok, discarded)
         // Give the OS well over its start-foreground deadline to deliver a crash if the service were left dangling.

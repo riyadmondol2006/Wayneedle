@@ -53,7 +53,8 @@ import kotlin.math.max
  * unknown (see [RejectReason.clearsLiveSpeed]), when no accepted fix arrived for
  * [TrackerConfig.liveSpeedTimeoutMillis], and whenever the listener is released or GPS is lost.
  * While the listener is wanted a ticker re-publishes the state every [TrackerConfig.tickIntervalMillis]
- * so the duration advances and stale readings are downgraded even when no fixes arrive.
+ * (every [TrackerConfig.backgroundTickIntervalMillis] while the UI is hidden, to save battery) so the
+ * duration advances and stale readings are downgraded even when no fixes arrive.
  *
  * **Signal quality** describes the latest *current* fix even when it is too inaccurate to be used
  * (accuracy above 25 m shows as POOR, so "weak signal" differs from "no signal"). NONE means no current
@@ -285,6 +286,8 @@ class TripTracker(
         lock.withLock {
             if (uiVisible == visible) return
             uiVisible = visible
+            // A ticker sleeping on the slow background interval would leave the screen stale for seconds.
+            if (visible && activeTickerId != NO_JOB) stopTickerLocked()
             updateListenerLocked()
             publishLocked()
         }
@@ -420,16 +423,21 @@ class TripTracker(
     private fun startTickerLocked() {
         val id = ++jobIds
         activeTickerId = id
+        var interval = tickIntervalLocked()
         tickerJob = scope.launch {
             while (true) {
-                delay(config.tickIntervalMillis)
-                val current = lock.withLock {
-                    (activeTickerId == id).also { if (it) onTickLocked() }
+                delay(interval)
+                interval = lock.withLock {
+                    if (activeTickerId != id) return@launch
+                    onTickLocked()
+                    tickIntervalLocked()
                 }
-                if (!current) break
             }
         }
     }
+
+    private fun tickIntervalLocked(): Long =
+        if (uiVisible) config.tickIntervalMillis else config.backgroundTickIntervalMillis
 
     private fun stopTickerLocked() {
         activeTickerId = NO_JOB

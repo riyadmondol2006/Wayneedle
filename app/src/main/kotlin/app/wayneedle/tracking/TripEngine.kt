@@ -15,6 +15,7 @@ data class DistanceConfig(
     val segmentToleranceMps: Double = SEGMENT_TOLERANCE_MPS,
     val segmentRelativeTolerance: Double = SEGMENT_RELATIVE_TOLERANCE,
     val gapMillis: Long = GAP_MILLIS,
+    val minElevationStepM: Double = MIN_ELEVATION_STEP_M,
 ) {
     companion object {
         /** Displacement below this is never counted, however good the accuracy. */
@@ -43,6 +44,13 @@ data class DistanceConfig(
          * (the car stopped at a light after the tunnel; the tunnel was still driven).
          */
         const val GAP_MILLIS: Long = FixFilterConfig.RELATIVE_CHECK_WINDOW_MILLIS
+
+        /**
+         * Climb or descent is counted in steps of at least this many metres, or the two fixes' vertical
+         * accuracies added up if that is more, measured from the last counted altitude. Altitude noise below that
+         * never adds up, a real slope does, step by step.
+         */
+        const val MIN_ELEVATION_STEP_M: Double = 5.0
     }
 }
 
@@ -62,6 +70,10 @@ data class DistanceConfig(
  *   ([Corroboration.PREVIOUS_FIX]). A single glitched reading therefore never becomes the trip's top
  *   speed, even one within physical acceleration limits; a real peak loses at most the difference to the
  *   neighbouring 1 Hz reading.
+ * * Moving time is the time of the stretches that counted as distance (a gap stretch once confirmed), so a
+ *   stop at a light or a parked phone adds none; moving average = distance ÷ moving time.
+ * * Ascent and descent come from the altitude of moving fixes with a usable vertical accuracy, counted in
+ *   hysteresis steps ([DistanceConfig.MIN_ELEVATION_STEP_M]); null until the receiver gave such an altitude.
  * * Distance is summed between consecutive accepted fixes. The first fix after start or resume, and
  *   the first after [onSignalLost], is only an anchor. While the reported speed is 0 at both ends the
  *   anchor follows the fix without adding distance (a parked phone accumulates nothing); displacement
@@ -93,6 +105,16 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
 
     /** Distance of a segment across a GPS gap, waiting for the next fix to confirm where the gap ended. */
     private var pendingGapMeters = 0.0
+    private var pendingGapNanos = 0L
+
+    private var movingNanos = 0L
+
+    /** False for a trip restored from a checkpoint that predates moving time: the earlier part is unknown. */
+    private var movingKnown = true
+    private var ascentMeters: Double? = null
+    private var descentMeters: Double? = null
+    private var elevationBaseM: Double? = null
+    private var elevationBaseAccuracyM = 0f
 
     /** Speed of the previous accepted fix while RUNNING; the top speed is taken over consecutive pairs. */
     private var previousFixSpeedMps: Float? = null
@@ -160,6 +182,10 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         distanceMeters = checkpoint.stats.distanceMeters
         maxSpeedMps = checkpoint.stats.maxSpeedMps
         closedActiveNanos = checkpoint.stats.activeDurationMillis * NANOS_PER_MILLI
+        movingKnown = checkpoint.stats.movingDurationMillis != null
+        movingNanos = (checkpoint.stats.movingDurationMillis ?: 0L) * NANOS_PER_MILLI
+        ascentMeters = checkpoint.stats.ascentMeters
+        descentMeters = checkpoint.stats.descentMeters
         phase = TripPhase.PAUSED
         recovered = true
         return true
@@ -173,6 +199,7 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
     fun onAcceptedFix(fix: AcceptedFix): Double {
         if (phase != TripPhase.RUNNING) return 0.0
         updateTopSpeed(fix)
+        updateElevation(fix)
         val previous = anchor
         if (previous == null) {
             anchor = fix.toAnchor()
@@ -191,7 +218,9 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
 
         // This fix confirms (or refutes) the end of a preceding gap segment.
         var added = if (consistent) pendingGapMeters else 0.0
+        if (consistent) movingNanos += pendingGapNanos
         pendingGapMeters = 0.0
+        pendingGapNanos = 0L
         val acrossGap = intervalNanos > config.gapMillis * NANOS_PER_MILLI
         val stationary = fix.speedMps < config.stationarySpeedMps
         val parked = stationary && (previous.speedMps < config.stationarySpeedMps || !acrossGap)
@@ -205,11 +234,13 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
 
             acrossGap -> {
                 pendingGapMeters = meters
+                pendingGapNanos = intervalNanos
                 anchor = fix.toAnchor()
             }
 
             else -> {
                 added += meters
+                movingNanos += intervalNanos
                 anchor = fix.toAnchor()
             }
         }
@@ -230,10 +261,38 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         previousFixSpeedMps = fix.speedMps
     }
 
+    private fun updateElevation(fix: AcceptedFix) {
+        val altitude = fix.altitudeM ?: return
+        val accuracy = fix.verticalAccuracyM ?: return
+        if (ascentMeters == null) ascentMeters = 0.0
+        if (descentMeters == null) descentMeters = 0.0
+        val base = elevationBaseM
+        if (base == null) {
+            elevationBaseM = altitude
+            elevationBaseAccuracyM = accuracy
+            return
+        }
+        // A parked phone's altitude wanders by metres; that is not a climb.
+        if (fix.speedMps < config.stationarySpeedMps) return
+        val step = max(config.minElevationStepM, (elevationBaseAccuracyM + accuracy).toDouble())
+        val change = altitude - base
+        if (change >= step) {
+            ascentMeters = (ascentMeters ?: 0.0) + change
+        } else if (-change >= step) {
+            descentMeters = (descentMeters ?: 0.0) - change
+        } else {
+            return
+        }
+        elevationBaseM = altitude
+        elevationBaseAccuracyM = accuracy
+    }
+
     private fun forgetAnchor() {
         anchor = null
         pendingGapMeters = 0.0
+        pendingGapNanos = 0L
         previousFixSpeedMps = null
+        elevationBaseM = null
     }
 
     fun activeDurationMillis(nowNanos: Long): Long {
@@ -245,6 +304,9 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         distanceMeters = distanceMeters,
         activeDurationMillis = activeDurationMillis(nowNanos),
         maxSpeedMps = maxSpeedMps,
+        movingDurationMillis = (movingNanos / NANOS_PER_MILLI).takeIf { movingKnown },
+        ascentMeters = ascentMeters,
+        descentMeters = descentMeters,
     )
 
     fun snapshot(nowNanos: Long): TripState = if (phase == TripPhase.IDLE) {
@@ -284,6 +346,10 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         maxSpeedMps = 0f
         closedActiveNanos = 0L
         runningSinceNanos = 0L
+        movingNanos = 0L
+        movingKnown = true
+        ascentMeters = null
+        descentMeters = null
         forgetAnchor()
         recovered = false
     }
@@ -310,6 +376,11 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
                 stats.distanceMeters.isFinite() && stats.distanceMeters >= 0.0 &&
                 stats.maxSpeedMps.isFinite() && stats.maxSpeedMps >= 0f &&
                 stats.activeDurationMillis >= 0L &&
-                stats.activeDurationMillis <= Long.MAX_VALUE / NANOS_PER_MILLI
+                stats.activeDurationMillis <= Long.MAX_VALUE / NANOS_PER_MILLI &&
+                (stats.movingDurationMillis ?: 0L) >= 0L &&
+                stats.ascentMeters.isNullOrSane() &&
+                stats.descentMeters.isNullOrSane()
+
+        private fun Double?.isNullOrSane(): Boolean = this == null || (isFinite() && this >= 0.0)
     }
 }

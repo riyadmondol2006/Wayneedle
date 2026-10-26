@@ -28,7 +28,9 @@ class TripEngineTest {
         lat: Double = latitude,
         lon: Double = longitude,
         corroboration: Corroboration = Corroboration.PREVIOUS_FIX,
-    ) = AcceptedFix(lat, lon, accuracyM, speedMps, sec(seconds), corroboration)
+        altitudeM: Double? = null,
+        verticalAccuracyM: Float? = null,
+    ) = AcceptedFix(lat, lon, accuracyM, speedMps, sec(seconds), corroboration, altitudeM, verticalAccuracyM)
 
     /** Moves north by [meters] and feeds a fix at [seconds]. */
     private fun moveAndFix(seconds: Double, meters: Double, speedMps: Float = 10f, accuracyM: Float = 5f): Double {
@@ -339,7 +341,13 @@ class TripEngineTest {
         engine.start("trip", sec(0.0), 7L)
         val running = engine.checkpoint(sec(3.0), 70L)
         assertEquals(
-            TripCheckpoint("trip", TripPhase.RUNNING, 7L, TripStats(activeDurationMillis = 3_000L), 70L),
+            TripCheckpoint(
+                "trip",
+                TripPhase.RUNNING,
+                7L,
+                TripStats(activeDurationMillis = 3_000L, movingDurationMillis = 0L),
+                70L,
+            ),
             running,
         )
         engine.pause(sec(4.0))
@@ -357,7 +365,133 @@ class TripEngineTest {
         engine.start("second", sec(10.0), 10L)
         val state = engine.snapshot(sec(10.0))
         assertEquals("second", state.tripId)
-        assertEquals(TripStats(), state.stats)
+        assertEquals(TripStats(movingDurationMillis = 0L), state.stats)
         assertTrue(state.awaitingFix)
+    }
+
+    // ---- moving time and moving average --------------------------------------------------------------------
+
+    @Test
+    fun `moving time leaves out a stop at a red light, the average does not`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(0.0, 0.0, speedMps = 10f)
+        for (s in 1..60) moveAndFix(s.toDouble(), 10.0, speedMps = 10f)
+        // 60 s waiting at a light: stationary fixes, a little jitter.
+        for (s in 61..120) engine.onAcceptedFix(fixAt(s.toDouble(), speedMps = 0f))
+        for (s in 121..180) moveAndFix(s.toDouble(), 10.0, speedMps = 10f)
+        val stats = engine.stats(sec(180.0))
+        assertEquals(180_000L, stats.activeDurationMillis)
+        assertEquals(1_200.0, stats.distanceMeters, 0.5)
+        // 60 one-second segments before the light and 60 after it; the minute at the light is not moving.
+        assertEquals(120_000L, stats.movingDurationMillis)
+        assertEquals(10.0, stats.movingAverageSpeedMps!!.toDouble(), 0.01)
+        assertEquals(1_200.0 / 180.0, stats.averageSpeedMps.toDouble(), 0.01)
+    }
+
+    @Test
+    fun `a parked phone builds up no moving time`() {
+        engine.start("trip", sec(0.0), 0L)
+        val random = Random(3)
+        val centerLat = latitude
+        for (s in 0..600) {
+            // Within the 5 m noise floor (see the jitter tests above).
+            val lat = latitudeAfterNorth(centerLat, random.nextDouble(-2.0, 2.0))
+            engine.onAcceptedFix(fixAt(s.toDouble(), speedMps = if (s % 7 == 0) 0.6f else 0f, lat = lat))
+        }
+        assertEquals(0L, engine.stats(sec(600.0)).movingDurationMillis)
+        assertNull(engine.stats(sec(600.0)).movingAverageSpeedMps)
+    }
+
+    @Test
+    fun `a confirmed tunnel counts as moving time, a refuted one does not`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(1.0, 0.0, speedMps = 20f)
+        moveAndFix(61.0, 1_150.0, speedMps = 20f)
+        assertEquals(0L, engine.stats(sec(61.0)).movingDurationMillis, "pending")
+        moveAndFix(62.0, 20.0, speedMps = 20f)
+        assertEquals(61_000L, engine.stats(sec(62.0)).movingDurationMillis)
+    }
+
+    @Test
+    fun `moving time survives a checkpoint, and an old checkpoint without it stays unknown`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(0.0, 0.0)
+        for (s in 1..10) moveAndFix(s.toDouble(), 10.0)
+        val checkpoint = engine.checkpoint(sec(10.0), 1_000L)!!
+        assertEquals(10_000L, checkpoint.stats.movingDurationMillis)
+        val restored = TripEngine()
+        assertTrue(restored.restore(checkpoint))
+        assertEquals(10_000L, restored.stats(sec(99.0)).movingDurationMillis)
+
+        val old = TripEngine()
+        assertTrue(old.restore(checkpoint.copy(stats = checkpoint.stats.copy(movingDurationMillis = null))))
+        assertNull(old.stats(sec(99.0)).movingDurationMillis, "the earlier part was never measured")
+    }
+
+    // ---- ascent and descent ------------------------------------------------------------------------------
+
+    private fun climb(seconds: Double, meters: Double, altitude: Double, speedMps: Float = 5f, vertical: Float = 3f) {
+        latitude = latitudeAfterNorth(latitude, meters)
+        engine.onAcceptedFix(
+            fixAt(seconds, speedMps = speedMps, altitudeM = altitude, verticalAccuracyM = vertical),
+        )
+    }
+
+    @Test
+    fun `a steady climb and descent are counted, altitude noise is not`() {
+        engine.start("trip", sec(0.0), 0L)
+        val random = Random(5)
+        var altitude = 100.0
+        // Up 60 m over 120 s, with ±2 m noise on every reading.
+        for (s in 0..120) {
+            altitude = 100.0 + s * 0.5
+            climb(s.toDouble(), 5.0, altitude + random.nextDouble(-2.0, 2.0))
+        }
+        // Down 40 m.
+        for (s in 121..200) climb(s.toDouble(), 5.0, altitude - (s - 120) * 0.5 + random.nextDouble(-2.0, 2.0))
+        val stats = engine.stats(sec(200.0))
+        assertTrue(stats.ascentMeters!! in 50.0..64.0, "climbed ~60 m, counted ${stats.ascentMeters}")
+        assertTrue(stats.descentMeters!! in 30.0..44.0, "descended ~40 m, counted ${stats.descentMeters}")
+    }
+
+    @Test
+    fun `a still phone whose altitude wanders gains no height`() {
+        engine.start("trip", sec(0.0), 0L)
+        val random = Random(8)
+        for (s in 0..900) {
+            engine.onAcceptedFix(
+                fixAt(
+                    s.toDouble(),
+                    speedMps = 0f,
+                    altitudeM = 100.0 + random.nextDouble(-15.0, 15.0),
+                    verticalAccuracyM = 4f,
+                ),
+            )
+        }
+        val stats = engine.stats(sec(900.0))
+        assertEquals(0.0, stats.ascentMeters)
+        assertEquals(0.0, stats.descentMeters)
+    }
+
+    @Test
+    fun `without altitude from the receiver ascent stays unknown`() {
+        engine.start("trip", sec(0.0), 0L)
+        for (s in 0..10) moveAndFix(s.toDouble(), 10.0)
+        assertNull(engine.stats(sec(10.0)).ascentMeters)
+        assertNull(engine.stats(sec(10.0)).descentMeters)
+    }
+
+    @Test
+    fun `climbing while paused is not counted`() {
+        engine.start("trip", sec(0.0), 0L)
+        climb(0.0, 0.0, 100.0)
+        climb(1.0, 5.0, 120.0)
+        engine.pause(sec(2.0))
+        climb(3.0, 5.0, 200.0)
+        engine.resume(sec(4.0))
+        climb(5.0, 5.0, 205.0)
+        climb(6.0, 5.0, 230.0)
+        val stats = engine.stats(sec(6.0))
+        assertEquals(20.0 + 25.0, stats.ascentMeters!!, 1e-6)
     }
 }

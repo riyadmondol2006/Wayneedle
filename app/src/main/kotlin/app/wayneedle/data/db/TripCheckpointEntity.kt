@@ -30,6 +30,13 @@ data class TripCheckpointEntity(
     val maxSpeedMps: Float,
     @ColumnInfo(name = "saved_at_epoch_millis")
     val savedAtEpochMillis: Long,
+    /** Since schema 2; see [TripEntity.movingDurationMillis]. */
+    @ColumnInfo(name = "moving_duration_millis")
+    val movingDurationMillis: Long? = null,
+    @ColumnInfo(name = "ascent_meters")
+    val ascentMeters: Double? = null,
+    @ColumnInfo(name = "descent_meters")
+    val descentMeters: Double? = null,
 ) {
     companion object {
         const val TABLE_NAME = "trip_checkpoint"

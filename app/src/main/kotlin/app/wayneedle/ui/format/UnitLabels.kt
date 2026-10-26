@@ -20,6 +20,20 @@ val SpeedUnit.distanceLabelRes: Int
         SpeedUnit.MPH -> R.string.unit_distance_mi
     }
 
+/** Short visible label for a climb or descent, e.g. `m`. */
+val SpeedUnit.elevationLabelRes: Int
+    @StringRes get() = when (this) {
+        SpeedUnit.KMH -> R.string.unit_elevation_m
+        SpeedUnit.MPH -> R.string.unit_elevation_ft
+    }
+
+/** Spoken climb or descent with a `%1$s` value placeholder, e.g. "120 metres". */
+val SpeedUnit.elevationSpokenRes: Int
+    @PluralsRes get() = when (this) {
+        SpeedUnit.KMH -> R.plurals.spoken_elevation_m
+        SpeedUnit.MPH -> R.plurals.spoken_elevation_ft
+    }
+
 /** Spoken speed with a `%1$s` value placeholder, e.g. "54 kilometres per hour". */
 val SpeedUnit.speedSpokenRes: Int
     @PluralsRes get() = when (this) {

@@ -141,6 +141,14 @@ class AndroidLocationSource(context: Context) : LocationSource {
         speedAccuracyMps = speedAccuracyMetersPerSecond,
         elapsedRealtimeNanos = elapsedRealtimeNanos,
         epochMillis = time,
+        hasAltitude = hasAltitude(),
+        altitudeM = altitude,
+        hasVerticalAccuracy = hasVerticalAccuracy(),
+        verticalAccuracyM = verticalAccuracyMeters,
+        hasBearing = hasBearing(),
+        bearingDeg = bearing,
+        hasBearingAccuracy = hasBearingAccuracy(),
+        bearingAccuracyDeg = bearingAccuracyDegrees,
     )
 
     private companion object {

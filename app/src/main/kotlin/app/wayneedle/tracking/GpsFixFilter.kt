@@ -20,6 +20,8 @@ data class FixFilterConfig(
     val displacementToleranceMps: Float = DISPLACEMENT_TOLERANCE_MPS,
     val displacementRelativeTolerance: Float = DISPLACEMENT_RELATIVE_TOLERANCE,
     val stationarySpeedMps: Float = STATIONARY_SPEED_MPS,
+    val maxVerticalAccuracyM: Float = MAX_VERTICAL_ACCURACY_M,
+    val maxBearingAccuracyDeg: Float = MAX_BEARING_ACCURACY_DEG,
 ) {
     companion object {
         /**
@@ -68,6 +70,12 @@ data class FixFilterConfig(
 
         /** Accepted speeds below this (1.8 km/h) are GNSS noise of a stationary receiver and become 0. */
         const val STATIONARY_SPEED_MPS: Float = 0.5f
+
+        /** Altitude is passed on only when its 68 % vertical accuracy is at least this good. */
+        const val MAX_VERTICAL_ACCURACY_M: Float = 20f
+
+        /** Course is passed on only when its 68 % accuracy is at least this good (and the fix is moving). */
+        const val MAX_BEARING_ACCURACY_DEG: Float = 30f
     }
 }
 
@@ -144,6 +152,9 @@ enum class Corroboration {
  * A fix that passed every check, with its validated (non-null) values.
  *
  * @property speedMps accepted ground speed; values below [FixFilterConfig.stationarySpeedMps] are 0.
+ * @property altitudeM altitude with a usable vertical accuracy (see [FixFilterConfig.maxVerticalAccuracyM]),
+ *   else null. Altitude never decides whether a fix is accepted.
+ * @property bearingDeg course over ground in [0, 360) when the receiver reports a credible one, else null.
  */
 data class AcceptedFix(
     val latitude: Double,
@@ -152,6 +163,9 @@ data class AcceptedFix(
     val speedMps: Float,
     val elapsedRealtimeNanos: Long,
     val corroboration: Corroboration,
+    val altitudeM: Double? = null,
+    val verticalAccuracyM: Float? = null,
+    val bearingDeg: Float? = null,
 )
 
 sealed interface FixDecision {
@@ -249,6 +263,17 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
                 speedMps = if (speed < config.stationarySpeedMps) 0f else speed,
                 elapsedRealtimeNanos = timestamp,
                 corroboration = corroboration,
+                altitudeM = sample.altitudeM?.takeIf { altitude ->
+                    val vertical = sample.verticalAccuracyM
+                    altitude.isFinite() && vertical != null && vertical.isFinite() && vertical >= 0f &&
+                        vertical <= config.maxVerticalAccuracyM
+                },
+                verticalAccuracyM = sample.verticalAccuracyM?.takeIf { it.isFinite() && it >= 0f },
+                bearingDeg = sample.bearingDeg?.takeIf { bearing ->
+                    val accuracy = sample.bearingAccuracyDeg
+                    speed >= config.stationarySpeedMps && bearing.isFinite() &&
+                        (accuracy == null || (accuracy.isFinite() && accuracy <= config.maxBearingAccuracyDeg))
+                }?.let { ((it % 360f) + 360f) % 360f },
             ),
         )
     }

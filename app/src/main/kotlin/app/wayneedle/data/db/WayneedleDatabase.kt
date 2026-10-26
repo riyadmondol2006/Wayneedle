@@ -22,7 +22,7 @@ abstract class WayneedleDatabase : RoomDatabase() {
     abstract fun tripCheckpointDao(): TripCheckpointDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
         const val FILE_NAME = "wayneedle.db"
 
         /**

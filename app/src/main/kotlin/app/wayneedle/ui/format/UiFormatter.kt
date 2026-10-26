@@ -78,6 +78,20 @@ class UiFormatter(val locale: Locale = Locale.getDefault()) {
         return String.format(locale, "%d:%02d:%02d", hours, minutes, seconds)
     }
 
+    /** Whole metres (km/h users) or feet (mph users) of climb or descent. */
+    fun elevation(meters: Double, unit: SpeedUnit): String =
+        if (!meters.isFinite()) PLACEHOLDER else integerFormat.format(elevationInUnit(meters, unit))
+
+    /** The number [elevation] shows, for choosing the matching plural form. */
+    fun elevationInUnit(meters: Double, unit: SpeedUnit): Long {
+        if (!meters.isFinite()) return 0L
+        val value = when (unit) {
+            SpeedUnit.KMH -> meters
+            SpeedUnit.MPH -> meters * METERS_TO_FEET
+        }
+        return value.coerceAtLeast(0.0).roundToLong()
+    }
+
     /** Hours, minutes and seconds (rounded down) for spoken descriptions such as "1 hour 2 minutes". */
     fun durationParts(millis: Long): Triple<Long, Long, Long> {
         val totalSeconds = millis.coerceAtLeast(0L) / MILLIS_PER_SECOND

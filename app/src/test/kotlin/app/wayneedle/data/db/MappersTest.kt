@@ -1,6 +1,7 @@
 package app.wayneedle.data.db
 
 import app.wayneedle.domain.model.Trip
+import app.wayneedle.domain.model.TripCheckpoint
 import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.domain.model.TripStats
 import kotlin.test.Test
@@ -193,4 +194,31 @@ class MappersTest {
     }
 
     // endregion
+
+    @Test
+    fun `moving time and elevation round-trip, and unknown stays unknown`() {
+        val measured = Trip(
+            "t",
+            1_000L,
+            61_000L,
+            TripStats(1_000.0, 60_000L, 12f, movingDurationMillis = 50_000L, ascentMeters = 12.5, descentMeters = 3.0),
+        )
+        assertEquals(measured, measured.toEntity().toDomainOrNull())
+        val old = Trip("o", 1_000L, 61_000L, TripStats(1_000.0, 60_000L, 12f))
+        assertEquals(old, old.toEntity().toDomainOrNull())
+    }
+
+    @Test
+    fun `impossible new figures read as unknown in history but make a checkpoint corrupt`() {
+        val entity = Trip("t", 1_000L, 61_000L, TripStats(1_000.0, 60_000L, 12f)).toEntity()
+            .copy(movingDurationMillis = -5L, ascentMeters = Double.NaN, descentMeters = -1.0)
+        val trip = entity.toDomainOrNull()!!
+        assertEquals(null, trip.stats.movingDurationMillis)
+        assertEquals(null, trip.stats.ascentMeters)
+        assertEquals(null, trip.stats.descentMeters)
+
+        val checkpoint = TripCheckpoint("c", TripPhase.PAUSED, 0L, TripStats(), 0L).toEntity()
+        assertEquals(null, checkpoint.copy(ascentMeters = Double.POSITIVE_INFINITY).toDomainOrNull())
+        assertEquals(null, checkpoint.copy(movingDurationMillis = -1L).toDomainOrNull())
+    }
 }

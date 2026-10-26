@@ -41,10 +41,8 @@ import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonStyle
 import app.wayneedle.ui.components.NeedleLoadingIndicator
 import app.wayneedle.ui.components.TitleScaffold
-import app.wayneedle.ui.dashboard.DistanceStatTile
-import app.wayneedle.ui.dashboard.DurationStatTile
-import app.wayneedle.ui.dashboard.SpeedStatTile
 import app.wayneedle.ui.dashboard.TotalTimeStatTile
+import app.wayneedle.ui.dashboard.tripDetailTiles
 import app.wayneedle.ui.format.UiFormatter
 import app.wayneedle.ui.format.rememberUiFormatter
 import app.wayneedle.ui.icons.WayneedleIcons
@@ -161,12 +159,7 @@ private fun TripDetailContent(
         )
         val topLabel = stringResource(R.string.stat_top)
         val averageLabel = stringResource(R.string.stat_average)
-        val tiles = listOf<@Composable (Modifier) -> Unit>(
-            { m -> DistanceStatTile(stats.distanceMeters, unit, formatter, m) },
-            { m -> DurationStatTile(stats.activeDurationMillis, formatter, m) },
-            { m -> SpeedStatTile(topLabel, stats.maxSpeedMps, unit, formatter, m) },
-            { m -> SpeedStatTile(averageLabel, stats.averageSpeedMps, unit, formatter, m) },
-        )
+        val tiles = tripDetailTiles(stats, unit, formatter, topLabel, averageLabel)
         tiles.chunked(columns).forEach { rowTiles ->
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowTiles.forEach { tile -> tile(Modifier.weight(1f).fillMaxHeight()) }
@@ -174,6 +167,11 @@ private fun TripDetailContent(
             }
         }
         TotalTimeStatTile(trip.totalDurationMillis, formatter, Modifier.fillMaxWidth())
+        Text(
+            text = stringResource(R.string.stats_explanation),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Surface(
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainer,

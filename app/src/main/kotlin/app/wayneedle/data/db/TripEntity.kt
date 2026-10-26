@@ -30,6 +30,13 @@ data class TripEntity(
     val activeDurationMillis: Long,
     @ColumnInfo(name = "max_speed_mps")
     val maxSpeedMps: Float,
+    /** Since schema 2; null for trips recorded before (unknown, not zero). */
+    @ColumnInfo(name = "moving_duration_millis")
+    val movingDurationMillis: Long? = null,
+    @ColumnInfo(name = "ascent_meters")
+    val ascentMeters: Double? = null,
+    @ColumnInfo(name = "descent_meters")
+    val descentMeters: Double? = null,
 ) {
     companion object {
         const val TABLE_NAME = "trips"

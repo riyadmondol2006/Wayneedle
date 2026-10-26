@@ -143,6 +143,7 @@ class TripTrackerTest {
     @Test
     fun `duration ticks about once per second without any fix`() = runTest {
         val h = TrackerHarness(this)
+        h.showUi()
         h.tracker.startTrip()
         h.runCurrent()
         h.tracker.state.map { it.trip.stats.activeDurationMillis }.distinctUntilChanged().test {
@@ -156,6 +157,29 @@ class TripTrackerTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `in the background the state is refreshed every five seconds, and every second again once visible`() =
+        runTest {
+            val h = TrackerHarness(this)
+            h.tracker.startTrip()
+            h.runCurrent()
+            h.tracker.state.map { it.trip.stats.activeDurationMillis }.distinctUntilChanged().test {
+                assertEquals(0L, awaitItem())
+                h.advance(4_000L)
+                expectNoEvents()
+                h.advance(1_000L)
+                assertEquals(5_000L, awaitItem())
+                // The user opens the app: published at once, then every second.
+                h.advance(500L)
+                h.tracker.setUiVisible(true)
+                h.runCurrent()
+                assertEquals(5_500L, awaitItem())
+                h.advance(1_000L)
+                assertEquals(6_500L, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     @Test
     fun `full lifecycle start pause resume finish`() = runTest {
@@ -526,8 +550,9 @@ class TripTrackerTest {
         assertEquals(TripPhase.RUNNING, h.state.trip.phase)
         assertTrue(h.state.trip.awaitingFix)
         assertEquals(LocationPermissionState.GRANTED_APPROXIMATE_ONLY, h.state.permission)
-        h.advance(4_000L)
-        assertEquals(7_000L, h.state.trip.stats.activeDurationMillis)
+        // Hidden app: the next background refresh is at 10 s.
+        h.advance(7_000L)
+        assertEquals(10_000L, h.state.trip.stats.activeDurationMillis)
     }
 
     @Test

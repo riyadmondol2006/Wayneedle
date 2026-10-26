@@ -3,6 +3,7 @@ package app.wayneedle.ui.dashboard
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import app.wayneedle.R
 import app.wayneedle.domain.model.SpeedUnit
@@ -10,6 +11,8 @@ import app.wayneedle.ui.components.StatTile
 import app.wayneedle.ui.format.PLACEHOLDER
 import app.wayneedle.ui.format.UiFormatter
 import app.wayneedle.ui.format.distanceLabelRes
+import app.wayneedle.ui.format.elevationLabelRes
+import app.wayneedle.ui.format.elevationSpokenRes
 import app.wayneedle.ui.format.speedLabelRes
 import app.wayneedle.ui.format.spokenDistance
 import app.wayneedle.ui.format.spokenDuration
@@ -118,3 +121,31 @@ internal fun TotalTimeStatTile(
     dimmed = dimmed,
     labelRes = R.string.stat_total_time,
 )
+
+/** Climb or descent in whole metres or feet; null (not measured) shows "—". */
+@Composable
+internal fun ElevationStatTile(
+    label: String,
+    meters: Double?,
+    unit: SpeedUnit,
+    formatter: UiFormatter,
+    modifier: Modifier = Modifier,
+) {
+    if (meters == null || !meters.isFinite()) {
+        StatTile(
+            label = label,
+            value = PLACEHOLDER,
+            spokenValue = stringResource(R.string.spoken_no_value),
+            modifier = modifier,
+        )
+        return
+    }
+    val quantity = formatter.elevationInUnit(meters, unit).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    StatTile(
+        label = label,
+        value = formatter.elevation(meters, unit),
+        unit = stringResource(unit.elevationLabelRes),
+        spokenValue = pluralStringResource(unit.elevationSpokenRes, quantity, formatter.elevation(meters, unit)),
+        modifier = modifier,
+    )
+}

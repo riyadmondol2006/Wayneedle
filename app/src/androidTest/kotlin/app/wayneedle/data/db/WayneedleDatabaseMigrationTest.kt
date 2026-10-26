@@ -69,6 +69,36 @@ class WayneedleDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate1To2KeepsEveryTripAndMarksTheNewFiguresAsNotMeasured() = runBlocking {
+        helper.createDatabase(TEST_DB, 1).apply {
+            execSQL(
+                "INSERT INTO trips (id, started_at_epoch_millis, ended_at_epoch_millis, " +
+                    "distance_meters, active_duration_millis, max_speed_mps) " +
+                    "VALUES ('old-trip', 1000, 61000, 1234.5, 60000, 12.5)",
+            )
+            execSQL(
+                "INSERT INTO trip_checkpoint (slot, trip_id, phase, started_at_epoch_millis, distance_meters, " +
+                    "active_duration_millis, max_speed_mps, saved_at_epoch_millis) " +
+                    "VALUES (1, 'in-progress', 'PAUSED', 2000, 500.0, 30000, 9.0, 32000)",
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(TEST_DB, 2, true, *Migrations.all).close()
+
+        val database = Room.databaseBuilder(instrumentation.targetContext, WayneedleDatabase::class.java, TEST_DB)
+            .addMigrations(*Migrations.all)
+            .build()
+        helper.closeWhenFinished(database)
+        val trip = database.tripDao().getById("old-trip")
+        assertEquals(1_234.5, trip?.distanceMeters ?: Double.NaN, 0.0)
+        assertEquals(null, trip?.movingDurationMillis)
+        assertEquals(null, trip?.ascentMeters)
+        val checkpoint = database.tripCheckpointDao().get()
+        assertEquals("in-progress", checkpoint?.tripId)
+        assertEquals(null, checkpoint?.movingDurationMillis)
+    }
+
+    @Test
     fun everyVersionStepHasAnExplicitMigration() {
         val steps = Migrations.all.map { it.startVersion to it.endVersion }
 
