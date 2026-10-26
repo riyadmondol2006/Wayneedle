@@ -27,7 +27,8 @@ class TripEngineTest {
         accuracyM: Float = 5f,
         lat: Double = latitude,
         lon: Double = longitude,
-    ) = AcceptedFix(lat, lon, accuracyM, speedMps, sec(seconds))
+        corroboration: Corroboration = Corroboration.PREVIOUS_FIX,
+    ) = AcceptedFix(lat, lon, accuracyM, speedMps, sec(seconds), corroboration)
 
     /** Moves north by [meters] and feeds a fix at [seconds]. */
     private fun moveAndFix(seconds: Double, meters: Double, speedMps: Float = 10f, accuracyM: Float = 5f): Double {
@@ -156,11 +157,92 @@ class TripEngineTest {
     }
 
     @Test
-    fun `plausible segment across a signal gap is counted`() {
+    fun `plausible segment across a signal gap is counted once the next fix confirms it`() {
         engine.start("trip", sec(0.0), 0L)
         moveAndFix(1.0, 0.0, speedMps = 20f)
-        // 60 s tunnel at 20 m/s, nearly straight.
-        assertEquals(1_150.0, moveAndFix(61.0, 1_150.0, speedMps = 20f), 0.01)
+        // 60 s tunnel at 20 m/s, nearly straight. Its end is not cross-checked yet, so it waits.
+        assertEquals(0.0, moveAndFix(61.0, 1_150.0, speedMps = 20f))
+        assertEquals(1_170.0, moveAndFix(62.0, 20.0, speedMps = 20f), 0.01)
+    }
+
+    @Test
+    fun `a tunnel followed by a red light still counts the tunnel`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(1.0, 0.0, speedMps = 20f)
+        // GPS comes back while the car waits at a light right after the tunnel.
+        assertEquals(0.0, moveAndFix(91.0, 1_500.0, speedMps = 0f))
+        assertEquals(1_500.0, moveAndFix(92.0, 0.0, speedMps = 0f), 0.01)
+        assertEquals(1_500.0, engine.stats(sec(92.0)).distanceMeters, 0.01)
+    }
+
+    @Test
+    fun `parking in an underground garage counts the drive inside it`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(1.0, 0.0, speedMps = 4f)
+        // 2 minutes and 300 m without GPS, then parked; the next fixes are parked too.
+        moveAndFix(121.0, 300.0, speedMps = 0f)
+        for (s in 122..180) moveAndFix(s.toDouble(), 0.0, speedMps = 0f)
+        assertEquals(300.0, engine.stats(sec(180.0)).distanceMeters, 0.01)
+    }
+
+    @Test
+    fun `a gap whose end is a glitch adds nothing`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(1.0, 0.0, speedMps = 10f)
+        // After a 60 s gap the first fix is 2 km off with a plausible-looking speed...
+        moveAndFix(61.0, 2_000.0, speedMps = 30f)
+        // ...and the next honest fix is back where the car really is (600 m from the start).
+        latitude = latitudeAfterNorth(latitude, -1_400.0)
+        assertEquals(0.0, engine.onAcceptedFix(fixAt(62.0, speedMps = 10f)))
+        assertEquals(0.0, engine.stats(sec(62.0)).distanceMeters)
+    }
+
+    @Test
+    fun `stopping at normal fix rate after moving still keeps a parked phone from collecting distance`() {
+        engine.start("trip", sec(0.0), 0L)
+        moveAndFix(1.0, 0.0, speedMps = 1f)
+        // One second later it reports 0 with 6 m of jitter: not a gap, so treated as parked.
+        assertEquals(0.0, moveAndFix(2.0, 6.0, speedMps = 0f))
+    }
+
+    @Test
+    fun `top speed is the speed held across two consecutive fixes`() {
+        engine.start("trip", sec(0.0), 0L)
+        engine.onAcceptedFix(fixAt(1.0, speedMps = 25f, corroboration = Corroboration.NONE))
+        assertEquals(0f, engine.stats(sec(1.0)).maxSpeedMps, "one reading alone is not a record")
+        latitude = latitudeAfterNorth(latitude, 24.0)
+        engine.onAcceptedFix(fixAt(2.0, speedMps = 23f))
+        assertEquals(23f, engine.stats(sec(2.0)).maxSpeedMps)
+        latitude = latitudeAfterNorth(latitude, 24.0)
+        engine.onAcceptedFix(fixAt(3.0, speedMps = 24f))
+        assertEquals(23f, engine.stats(sec(3.0)).maxSpeedMps)
+        latitude = latitudeAfterNorth(latitude, 25.0)
+        engine.onAcceptedFix(fixAt(4.0, speedMps = 26f))
+        assertEquals(24f, engine.stats(sec(4.0)).maxSpeedMps)
+    }
+
+    @Test
+    fun `a single glitched reading never becomes the top speed`() {
+        engine.start("trip", sec(0.0), 0L)
+        // Parked; after a GPS gap one reading says 9 m/s, then the car is (still) standing.
+        engine.onAcceptedFix(fixAt(1.0, speedMps = 0f))
+        engine.onAcceptedFix(fixAt(60.0, speedMps = 9f, corroboration = Corroboration.NONE))
+        engine.onAcceptedFix(fixAt(61.0, speedMps = 0f))
+        engine.onAcceptedFix(fixAt(62.0, speedMps = 0f))
+        assertEquals(0f, engine.stats(sec(62.0)).maxSpeedMps)
+    }
+
+    @Test
+    fun `a glitch outvoted by the next fixes never becomes the top speed`() {
+        engine.start("trip", sec(0.0), 0L)
+        // First fix after a gap: a 60 m/s glitch (nothing to check it against).
+        engine.onAcceptedFix(fixAt(1.0, speedMps = 60f, corroboration = Corroboration.NONE))
+        // The next honest fix was rejected; the one after agreed with it and overruled the glitch.
+        latitude = latitudeAfterNorth(latitude, 40.0)
+        engine.onAcceptedFix(fixAt(3.0, speedMps = 20f, corroboration = Corroboration.REJECTED_FIX))
+        latitude = latitudeAfterNorth(latitude, 20.0)
+        engine.onAcceptedFix(fixAt(4.0, speedMps = 20f))
+        assertEquals(20f, engine.stats(sec(4.0)).maxSpeedMps)
     }
 
     @Test

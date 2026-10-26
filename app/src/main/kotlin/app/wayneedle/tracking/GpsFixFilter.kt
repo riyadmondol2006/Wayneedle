@@ -122,6 +122,24 @@ enum class RejectReason(val isCurrentFix: Boolean, val clearsLiveSpeed: Boolean)
     SPEED_DISPLACEMENT_MISMATCH(isCurrentFix = true, clearsLiveSpeed = false),
 }
 
+/** How an accepted fix was cross-checked against its neighbours. */
+enum class Corroboration {
+    /**
+     * Nothing recent to compare it with (the first fix, or the first after a gap). It passed the
+     * receiver-quality checks but could still be a glitch, so it must not set a record on its own.
+     */
+    NONE,
+
+    /** Consistent with the previous accepted fix, which is thereby confirmed as well. */
+    PREVIOUS_FIX,
+
+    /**
+     * Inconsistent with the previous accepted fix but consistent with the fix rejected just before it:
+     * two agreeing fixes outvote one, so the previous accepted fix was the outlier.
+     */
+    REJECTED_FIX,
+}
+
 /**
  * A fix that passed every check, with its validated (non-null) values.
  *
@@ -133,6 +151,7 @@ data class AcceptedFix(
     val horizontalAccuracyM: Float,
     val speedMps: Float,
     val elapsedRealtimeNanos: Long,
+    val corroboration: Corroboration,
 )
 
 sealed interface FixDecision {
@@ -159,6 +178,11 @@ sealed interface FixDecision {
  * reported speeds. Its tolerance includes both accuracy radii divided by the interval, so at 1 Hz with
  * ~5 m accuracy it only catches gross disagreement (position jumps of tens of metres). Single-sample
  * speed glitches are caught by the speed-accuracy, cap and acceleration checks instead.
+ *
+ * A glitch can only become the reference when nothing recent was there to check it against (the first
+ * fix after a gap). Then the honest fixes that follow fail the relative checks against it. To recover
+ * at once rather than after [FixFilterConfig.relativeCheckWindowMillis], a fix that fails against the
+ * reference but agrees with the fix rejected just before it is accepted ([Corroboration.REJECTED_FIX]).
  */
 class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
     private class Reference(
@@ -171,6 +195,9 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
 
     private var newestTimestampNanos: Long? = null
     private var lastAccepted: Reference? = null
+
+    /** The last fix rejected by a relative check, kept to recognise a bad reference. */
+    private var rejectedByReference: Reference? = null
 
     fun evaluate(sample: LocationSample, nowElapsedRealtimeNanos: Long): FixDecision {
         val timestamp = sample.elapsedRealtimeNanos
@@ -197,22 +224,23 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
         }
         if (speed > config.maxSpeedMps) return reject(RejectReason.SPEED_ABOVE_CAP)
 
-        val reference = lastAccepted?.takeIf {
-            timestamp - it.elapsedRealtimeNanos <= config.relativeCheckWindowMillis * NANOS_PER_MILLI
-        }
+        val current = Reference(sample.latitude, sample.longitude, accuracy, speed, timestamp)
+        var corroboration = Corroboration.NONE
+        val reference = lastAccepted?.takeIf { it.isRecentFor(timestamp) }
         if (reference != null) {
-            val intervalNanos = timestamp - reference.elapsedRealtimeNanos
-            val accelerationSeconds =
-                max(intervalNanos, config.minAccelerationIntervalMillis * NANOS_PER_MILLI) / NANOS_PER_SECOND
-            if (abs(speed - reference.rawSpeedMps) / accelerationSeconds > config.maxAccelerationMps2) {
-                return reject(RejectReason.ACCELERATION_SPIKE)
-            }
-            if (isDisplacementInconsistent(reference, sample, accuracy, speed, intervalNanos / NANOS_PER_SECOND)) {
-                return reject(RejectReason.SPEED_DISPLACEMENT_MISMATCH)
+            val failure = relativeFailure(reference, current)
+            if (failure == null) {
+                corroboration = Corroboration.PREVIOUS_FIX
+            } else {
+                val rejected = rejectedByReference?.takeIf { it.isRecentFor(timestamp) }
+                rejectedByReference = current
+                if (rejected == null || relativeFailure(rejected, current) != null) return reject(failure)
+                corroboration = Corroboration.REJECTED_FIX
             }
         }
 
-        lastAccepted = Reference(sample.latitude, sample.longitude, accuracy, speed, timestamp)
+        rejectedByReference = null
+        lastAccepted = current
         return FixDecision.Accepted(
             AcceptedFix(
                 latitude = sample.latitude,
@@ -220,6 +248,7 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
                 horizontalAccuracyM = accuracy,
                 speedMps = if (speed < config.stationarySpeedMps) 0f else speed,
                 elapsedRealtimeNanos = timestamp,
+                corroboration = corroboration,
             ),
         )
     }
@@ -228,26 +257,42 @@ class GpsFixFilter(private val config: FixFilterConfig = FixFilterConfig()) {
     fun reset() {
         newestTimestampNanos = null
         lastAccepted = null
+        rejectedByReference = null
+    }
+
+    private fun Reference.isRecentFor(timestampNanos: Long): Boolean =
+        timestampNanos - elapsedRealtimeNanos <= config.relativeCheckWindowMillis * NANOS_PER_MILLI
+
+    /** The relative check [candidate] fails against [reference], or null if the two are consistent. */
+    private fun relativeFailure(reference: Reference, candidate: Reference): RejectReason? {
+        val intervalNanos = candidate.elapsedRealtimeNanos - reference.elapsedRealtimeNanos
+        val accelerationSeconds =
+            max(intervalNanos, config.minAccelerationIntervalMillis * NANOS_PER_MILLI) / NANOS_PER_SECOND
+        if (abs(candidate.rawSpeedMps - reference.rawSpeedMps) / accelerationSeconds > config.maxAccelerationMps2) {
+            return RejectReason.ACCELERATION_SPIKE
+        }
+        if (isDisplacementInconsistent(reference, candidate, intervalNanos / NANOS_PER_SECOND)) {
+            return RejectReason.SPEED_DISPLACEMENT_MISMATCH
+        }
+        return null
     }
 
     private fun isDisplacementInconsistent(
         reference: Reference,
-        sample: LocationSample,
-        accuracy: Float,
-        speed: Float,
+        candidate: Reference,
         intervalSeconds: Double,
     ): Boolean {
         val distance = GeoMath.haversineMeters(
             reference.latitude,
             reference.longitude,
-            sample.latitude,
-            sample.longitude,
+            candidate.latitude,
+            candidate.longitude,
         )
         val impliedSpeed = distance / intervalSeconds
-        val meanReportedSpeed = (reference.rawSpeedMps + speed) / 2.0
-        val positionSlack = (reference.horizontalAccuracyM + accuracy) / intervalSeconds
+        val meanReportedSpeed = (reference.rawSpeedMps + candidate.rawSpeedMps) / 2.0
+        val positionSlack = (reference.horizontalAccuracyM + candidate.horizontalAccuracyM) / intervalSeconds
         val tolerance = config.displacementToleranceMps +
-            config.displacementRelativeTolerance * max(reference.rawSpeedMps, speed) +
+            config.displacementRelativeTolerance * max(reference.rawSpeedMps, candidate.rawSpeedMps) +
             positionSlack
         return abs(impliedSpeed - meanReportedSpeed) > tolerance
     }

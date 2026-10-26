@@ -5,6 +5,7 @@ import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.domain.model.TripState
 import app.wayneedle.domain.model.TripStats
 import kotlin.math.max
+import kotlin.math.min
 
 /** Anti-drift rules for distance accumulation in [TripEngine]. */
 data class DistanceConfig(
@@ -13,6 +14,7 @@ data class DistanceConfig(
     val stationarySpeedMps: Float = FixFilterConfig.STATIONARY_SPEED_MPS,
     val segmentToleranceMps: Double = SEGMENT_TOLERANCE_MPS,
     val segmentRelativeTolerance: Double = SEGMENT_RELATIVE_TOLERANCE,
+    val gapMillis: Long = GAP_MILLIS,
 ) {
     companion object {
         /** Displacement below this is never counted, however good the accuracy. */
@@ -33,6 +35,14 @@ data class DistanceConfig(
          */
         const val SEGMENT_TOLERANCE_MPS: Double = 5.0
         const val SEGMENT_RELATIVE_TOLERANCE: Double = 0.5
+
+        /**
+         * A segment longer than this spans a GPS gap (tunnel, garage, urban canyon). The fix filter did not
+         * cross-check its end against its start, so the end could be a glitch: the segment is counted only
+         * once the next fix agrees with it. A stationary fix at the end of a gap does not void the segment
+         * (the car stopped at a light after the tunnel; the tunnel was still driven).
+         */
+        const val GAP_MILLIS: Long = FixFilterConfig.RELATIVE_CHECK_WINDOW_MILLIS
     }
 }
 
@@ -47,11 +57,16 @@ data class DistanceConfig(
  *
  * Statistics change only while RUNNING:
  * * Active duration is the sum of the RUNNING intervals measured on the monotonic clock.
- * * Max speed is the highest accepted raw speed of a fix received while RUNNING.
+ * * Max speed is the highest speed *held* across two consecutive accepted fixes received while RUNNING
+ *   (the lower of the pair), where the second fix was checked against the first
+ *   ([Corroboration.PREVIOUS_FIX]). A single glitched reading therefore never becomes the trip's top
+ *   speed, even one within physical acceleration limits; a real peak loses at most the difference to the
+ *   neighbouring 1 Hz reading.
  * * Distance is summed between consecutive accepted fixes. The first fix after start or resume, and
- *   the first after [onSignalLost], is only an anchor. While the reported speed is 0 the anchor follows
- *   the fix without adding distance (a parked phone accumulates nothing); displacement below the
- *   accuracy noise floor keeps the anchor; implausible segments re-anchor without adding distance.
+ *   the first after [onSignalLost], is only an anchor. While the reported speed is 0 at both ends the
+ *   anchor follows the fix without adding distance (a parked phone accumulates nothing); displacement
+ *   below the accuracy noise floor keeps the anchor; implausible segments re-anchor without adding
+ *   distance; a segment across a gap ([DistanceConfig.GAP_MILLIS]) waits for the next fix to confirm it.
  */
 class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
     private class Anchor(
@@ -75,6 +90,12 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
     private var runningSinceNanos = 0L
     private var anchor: Anchor? = null
     private var recovered = false
+
+    /** Distance of a segment across a GPS gap, waiting for the next fix to confirm where the gap ended. */
+    private var pendingGapMeters = 0.0
+
+    /** Speed of the previous accepted fix while RUNNING; the top speed is taken over consecutive pairs. */
+    private var previousFixSpeedMps: Float? = null
 
     /** RUNNING and no anchor yet since start/resume/signal loss: distance is not accumulating. */
     val awaitingFix: Boolean get() = phase == TripPhase.RUNNING && anchor == null
@@ -101,7 +122,7 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         if (phase != TripPhase.PAUSED) return false
         phase = TripPhase.RUNNING
         runningSinceNanos = nowNanos
-        anchor = null
+        forgetAnchor()
         recovered = false
         return true
     }
@@ -151,33 +172,68 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
      */
     fun onAcceptedFix(fix: AcceptedFix): Double {
         if (phase != TripPhase.RUNNING) return 0.0
-        maxSpeedMps = max(maxSpeedMps, fix.speedMps)
+        updateTopSpeed(fix)
         val previous = anchor
-        if (previous == null || fix.elapsedRealtimeNanos <= previous.elapsedRealtimeNanos) {
-            if (previous == null) anchor = fix.toAnchor()
-            return 0.0
-        }
-        if (fix.speedMps < config.stationarySpeedMps) {
+        if (previous == null) {
             anchor = fix.toAnchor()
             return 0.0
         }
+        if (fix.elapsedRealtimeNanos <= previous.elapsedRealtimeNanos) return 0.0
         val meters = GeoMath.haversineMeters(previous.latitude, previous.longitude, fix.latitude, fix.longitude)
         val accuracySum = previous.horizontalAccuracyM.toDouble() + fix.horizontalAccuracyM
         val noiseFloor = max(config.minNoiseFloorM, config.accuracyNoiseFactor * accuracySum)
-        if (meters < noiseFloor) return 0.0
-        val seconds = (fix.elapsedRealtimeNanos - previous.elapsedRealtimeNanos) / NANOS_PER_SECOND
+        val intervalNanos = fix.elapsedRealtimeNanos - previous.elapsedRealtimeNanos
+        val seconds = intervalNanos / NANOS_PER_SECOND
         val reportedSpeed = max(previous.speedMps, fix.speedMps).toDouble()
         val plausibleSpeed = reportedSpeed * (1.0 + config.segmentRelativeTolerance) +
             config.segmentToleranceMps + accuracySum / seconds
-        anchor = fix.toAnchor()
-        if (meters / seconds > plausibleSpeed) return 0.0
-        distanceMeters += meters
-        return meters
+        val consistent = meters < noiseFloor || meters / seconds <= plausibleSpeed
+
+        // This fix confirms (or refutes) the end of a preceding gap segment.
+        var added = if (consistent) pendingGapMeters else 0.0
+        pendingGapMeters = 0.0
+        val acrossGap = intervalNanos > config.gapMillis * NANOS_PER_MILLI
+        val stationary = fix.speedMps < config.stationarySpeedMps
+        val parked = stationary && (previous.speedMps < config.stationarySpeedMps || !acrossGap)
+        when {
+            parked -> anchor = fix.toAnchor()
+
+            // Keep the anchor so that slow movement adds up once it exceeds the floor.
+            meters < noiseFloor -> Unit
+
+            !consistent -> anchor = fix.toAnchor()
+
+            acrossGap -> {
+                pendingGapMeters = meters
+                anchor = fix.toAnchor()
+            }
+
+            else -> {
+                added += meters
+                anchor = fix.toAnchor()
+            }
+        }
+        distanceMeters += added
+        return added
     }
 
     /** GPS became unavailable (provider off, permission lost): the next accepted fix is a fresh anchor. */
     fun onSignalLost() {
+        forgetAnchor()
+    }
+
+    private fun updateTopSpeed(fix: AcceptedFix) {
+        val previous = previousFixSpeedMps
+        if (previous != null && fix.corroboration == Corroboration.PREVIOUS_FIX) {
+            maxSpeedMps = max(maxSpeedMps, min(previous, fix.speedMps))
+        }
+        previousFixSpeedMps = fix.speedMps
+    }
+
+    private fun forgetAnchor() {
         anchor = null
+        pendingGapMeters = 0.0
+        previousFixSpeedMps = null
     }
 
     fun activeDurationMillis(nowNanos: Long): Long {
@@ -220,7 +276,7 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
 
     private fun closeRunningInterval(nowNanos: Long) {
         closedActiveNanos += max(0L, nowNanos - runningSinceNanos)
-        anchor = null
+        forgetAnchor()
     }
 
     private fun resetStatistics() {
@@ -228,7 +284,7 @@ class TripEngine(private val config: DistanceConfig = DistanceConfig()) {
         maxSpeedMps = 0f
         closedActiveNanos = 0L
         runningSinceNanos = 0L
-        anchor = null
+        forgetAnchor()
         recovered = false
     }
 

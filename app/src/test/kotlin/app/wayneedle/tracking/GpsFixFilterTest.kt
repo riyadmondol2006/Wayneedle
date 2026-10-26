@@ -208,6 +208,62 @@ class GpsFixFilterTest {
     }
 
     @Test
+    fun `fixes say whether a neighbour corroborated them`() {
+        assertEquals(
+            Corroboration.NONE,
+            assertAccepted(evaluate(aSample(speedMps = 10f, elapsedRealtimeMillis = 1_000L))).corroboration,
+        )
+        val north = latitudeAfterNorth(52.0, 10.0)
+        val second = assertAccepted(evaluate(aSample(latitude = north, speedMps = 10f, elapsedRealtimeMillis = 2_000L)))
+        assertEquals(Corroboration.PREVIOUS_FIX, second.corroboration)
+        // After a gap longer than the relative window there is nothing to corroborate with.
+        val later = latitudeAfterNorth(52.0, 80.0)
+        val afterGap =
+            assertAccepted(evaluate(aSample(latitude = later, speedMps = 10f, elapsedRealtimeMillis = 9_000L)))
+        assertEquals(Corroboration.NONE, afterGap.corroboration)
+    }
+
+    @Test
+    fun `a glitch accepted after a gap is overruled by the next two agreeing fixes`() {
+        // First fix after a gap: a 60 m/s glitch from a car really doing 20 m/s; nothing to compare it with.
+        assertAccepted(evaluate(aSample(speedMps = 60f, elapsedRealtimeMillis = 1_000L)))
+        // The honest fix fails against the glitch...
+        val first = latitudeAfterNorth(52.0, 20.0)
+        assertRejected(
+            RejectReason.ACCELERATION_SPIKE,
+            evaluate(aSample(latitude = first, speedMps = 20f, elapsedRealtimeMillis = 2_000L)),
+        )
+        // ...but the next one agrees with it, so the glitch was the outlier: recovered after two fixes,
+        // not after the five-second relative window.
+        val second = latitudeAfterNorth(52.0, 40.0)
+        val fix = assertAccepted(evaluate(aSample(latitude = second, speedMps = 20f, elapsedRealtimeMillis = 3_000L)))
+        assertEquals(Corroboration.REJECTED_FIX, fix.corroboration)
+        // And the honest fixes are now the reference.
+        val third = latitudeAfterNorth(52.0, 60.0)
+        val next = assertAccepted(evaluate(aSample(latitude = third, speedMps = 20f, elapsedRealtimeMillis = 4_000L)))
+        assertEquals(Corroboration.PREVIOUS_FIX, next.corroboration)
+    }
+
+    @Test
+    fun `an isolated spike between good fixes cannot overrule them`() {
+        assertAccepted(evaluate(aSample(speedMps = 20f, elapsedRealtimeMillis = 1_000L)))
+        val first = latitudeAfterNorth(52.0, 20.0)
+        assertRejected(
+            RejectReason.ACCELERATION_SPIKE,
+            evaluate(aSample(latitude = first, speedMps = 70f, elapsedRealtimeMillis = 2_000L)),
+        )
+        // A second, different spike does not agree with the first one either.
+        val second = latitudeAfterNorth(52.0, 40.0)
+        assertRejected(
+            RejectReason.ACCELERATION_SPIKE,
+            evaluate(aSample(latitude = second, speedMps = 45f, elapsedRealtimeMillis = 3_000L)),
+        )
+        val third = latitudeAfterNorth(52.0, 60.0)
+        val fix = assertAccepted(evaluate(aSample(latitude = third, speedMps = 20f, elapsedRealtimeMillis = 4_000L)))
+        assertEquals(Corroboration.PREVIOUS_FIX, fix.corroboration)
+    }
+
+    @Test
     fun `reset forgets timestamp and reference history`() {
         assertAccepted(evaluate(aSample(speedMps = 2f, elapsedRealtimeMillis = 5_000L)))
         filter.reset()
