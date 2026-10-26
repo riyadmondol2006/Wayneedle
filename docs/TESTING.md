@@ -28,6 +28,18 @@ Logic lives in pure Kotlin (`domain`, `tracking`) so it can be tested without An
 * Name tests with backticked sentences that state the behaviour.
 * A bug fix starts with a test that fails without the fix.
 
+**Chaos test.** `TripTrackerChaosTest` plays 150 seeded simulated users through 250 random steps each against the
+real `TripTracker` with fake GPS and storage: tapping commands in any order and several times in a row, Finish
+twice while the save is slow, Location switched off and on, permission revoked (which kills the process), the
+process dying at any moment (also with Start tapped before recovery ran), storage failing, and GPS glitches (speed
+spikes, stale, duplicated, future, malformed fixes, position jumps) between honest fixes from a vehicle that
+accelerates, brakes and parks. After every step it checks the invariants: no NaN or negative statistics; a trip's
+statistics never go backwards and change only while RUNNING; never more distance, active time or top speed than
+the simulated vehicle really produced while recording; rejected commands change nothing; a finished trip is stored
+exactly once and its checkpoint never comes back; an interrupted trip is never silently lost; the foreground
+service runs exactly while a trip needs it; at most one GPS listener. Coverage guards make it fail if the
+interesting situations stop happening. A failure prints the seed and the recent steps.
+
 ### Fixtures and fakes
 
 Shared helpers are in `app/src/test/kotlin/app/wayneedle/testing/`:

@@ -31,6 +31,7 @@ statement is checked automatically, that is noted.
 | Approximate location (`ACCESS_COARSE_LOCATION`) | Android asks for it together with precise location so you can choose. Approximate location alone is not enough to measure speed, and the app tells you so. |
 | `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` | Lets a running trip keep recording while the screen is off or another app is in front. |
 | Notifications (`POST_NOTIFICATIONS`, Android 13 and newer) | Shows the ongoing notification described below. |
+| Vibration (`VIBRATE`) | The optional speed alert vibrates briefly when you go above your limit. Granted at install; it gives no access to any data. |
 
 The app does **not** request `INTERNET`, contacts, storage, camera, microphone or background location.
 
@@ -52,7 +53,8 @@ recorded while the app is not running, and that gap is not added to the trip.
 |---|---|---|
 | Finished trips | Room (SQLite) database in the app's private storage | Trip id, start and end time, distance, active duration, top speed. No coordinates. |
 | In-progress trip | Same database, a single checkpoint | The same summary figures plus the phase (running or paused). Written about every few seconds of active time and on every phase change, so a trip can be recovered after a crash. Deleted when the trip is finished or discarded. |
-| Settings | DataStore (Preferences) in the app's private storage | Speed unit, theme, dynamic colour, keep-screen-on. |
+| Settings | DataStore (Preferences) in the app's private storage | Speed unit, theme, dynamic colour, keep-screen-on, speed alert on/off and limit. |
+| Permission prompts | SharedPreferences in the app's private storage | Whether the location and notification dialogs were shown before, so the app knows when Android has stopped asking. |
 
 All of this lives in the app's private storage, which other apps cannot read on an unmodified device.
 
@@ -65,7 +67,9 @@ All of this lives in the app's private storage, which other apps cannot read on 
 * **No cloud backup.** The manifest sets `allowBackup="false"` and the data-extraction rules exclude all app data
   from cloud backup; an automated test checks `allowBackup`. Android's device-to-device transfer (setting up a new
   phone from an old one) is governed by the system's extraction rules, which currently exclude cloud backup only.
-* **No sharing.** Wayneedle has no export or share feature that sends data off the device.
+* **Export only when you ask.** "Export trips as CSV" in History writes your trip summaries (times, distance,
+  durations, speeds; no coordinates) to a file in a place you pick with Android's file picker. Nothing is sent
+  anywhere by the app; what happens to the file afterwards is up to you. There is no other export or share feature.
 
 ## Deleting your data
 

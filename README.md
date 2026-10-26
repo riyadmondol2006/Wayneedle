@@ -16,13 +16,17 @@ for what has and has not been checked.
 * **Trips**: start, pause, resume and finish. Each trip records distance, top speed and average speed, and two
   times: **active time** (paused time excluded) and **total time** (start to finish, pauses included). Distance, top
   speed and average speed never include paused time.
-* **History** of finished trips, stored locally.
+* **History** of finished trips, stored locally, with lifetime totals (distance, active time, fastest speed, number
+  of trips) and **CSV export** through the system file picker, so you can keep your trips elsewhere.
+* **Speed alert** (optional): above a limit you choose, the dial turns red, the limit is marked on the scale and the
+  phone vibrates once per crossing. Works while Wayneedle is on screen.
 * **GPS status**: signal quality, accuracy and an explicit "no fix" state. A missing reading is never shown as
   0 km/h.
 * **Keeps recording** with the screen off while a trip is running, through a foreground service and an ongoing
   notification with Pause/Resume actions.
 * **Crash and process-death recovery**: an interrupted trip comes back paused; the time the app was not running is
-  never counted.
+  never counted. If a new trip is started before the interrupted one was recovered, the interrupted one is filed
+  into History instead of being lost.
 * **Material 3 Expressive-inspired** interface (spring motion, shape-morphing buttons, large rounded shapes) with
   dynamic (Material You) colour on Android 12+, light and dark themes, and an optional keep-screen-on setting.
   It is built on stable Material 3 1.4.0, where the official Expressive components are not public; see
@@ -51,8 +55,15 @@ guessing. The exact thresholds are documented in the tracking engine's source an
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Trip distance is the sum of the distances between consecutive accepted fixes while the trip is running. After
-starting or resuming, the first accepted fix only sets the starting point. Average speed is total distance divided
-by active (not paused) duration.
+starting or resuming, the first accepted fix only sets the starting point. When the GPS drops out while you keep
+moving (a tunnel, an underground garage, a street between tall buildings), the straight line across the gap is
+counted once the next fix confirms where you came out, even if you are standing at a traffic light by then; a first
+fix after a gap that is clearly wrong adds nothing. Average speed is total distance divided by active (not paused)
+duration.
+
+Top speed is the highest speed **held across two consecutive GPS fixes** (about two seconds), taking the lower of
+the two. A single glitched reading, which receivers produce now and then, therefore never becomes a trip's record;
+a real peak loses at most the difference to the neighbouring reading.
 
 Speed measured this way needs the **precise** location permission. If you grant only approximate location, the app
 tells you that it cannot measure speed.
@@ -134,7 +145,12 @@ Maven repository and Maven Central, so it needs a network connection even though
 This section is only updated with results that are recorded in [docs/TESTING.md](docs/TESTING.md).
 
 * Verified by the commands above on a development machine: the debug sources compile with warnings as errors, the
-  JVM tests pass, Android Lint and the ktlint check pass.
+  JVM tests pass (436, including a seeded "chaos" test that plays 150 simulated users through 250 random steps each:
+  button mashing, slow and failing storage, the process dying at any moment, GPS glitches and gaps), Android Lint
+  and the ktlint check pass.
+* The reliability fixes and new features of 2026-10-26 (GPS gaps, glitch handling, interrupted-trip preservation,
+  storage errors, double taps, speed alert, totals, CSV export) are covered by JVM tests but have **not yet been run
+  on the Pixel 6 Pro**: the phone was not connected when they were finished.
 * Verified on a Google Pixel 6 Pro (Android 17, API 37.1) on 2026-10-26: the 86 instrumentation tests pass, and the
   app was exercised by hand (permission flow, dashboard in every state, History, Settings). These runs fed the
   real Android location stack with **scripted fixes**, not satellite measurements. They show that live speed, trip

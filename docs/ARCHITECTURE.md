@@ -48,6 +48,11 @@ priority; it observes `TrackingController.state` and sends Pause/Resume commands
 It never talks to `LocationManager`.
 
 * The service is started **only** from a user action while the app is visible (Android 12+ background-start limits).
+* `start()` returns whether Android accepted the request; a refusal inside the service arrives through
+  `TrackingController.reportBackgroundRecordingUnavailable()`. Either way `TrackingState.backgroundRecordingUnavailable`
+  makes the dashboard warn that the trip records only while the app is on screen; Resume retries.
+* Notification updates: at most one per second, one per 30 s while the screen is off, phase changes at once; after a
+  swipe (Android 14+) none until the phase changes.
 * After process death a trip is recovered as `PAUSED` (`recovered = true`) from the checkpoint and the service is
   **not** auto-started from the background; the user reopens the app and taps Resume or Finish.
 * The unobserved gap after process death is never added to duration or distance.
@@ -58,6 +63,11 @@ It never talks to `LocationManager`.
 * Distance accumulates between consecutive *accepted* fixes. After start **and after resume** the first
   accepted fix is only an anchor (no distance); `awaitingFix = true` until it arrives.
 * Average speed = distance ÷ active duration (`TripStats.averageSpeedMps`).
+* Max speed is the speed held across two consecutive accepted fixes (the lower of the pair), where the second was
+  cross-checked against the first (`Corroboration.PREVIOUS_FIX`). One glitched reading never sets the record.
+* A segment longer than `DistanceConfig.GAP_MILLIS` (a GPS gap) is held until the next fix confirms its end, then
+  counted; a glitched end adds nothing. A stationary fix after a gap does not void the gap ("parked" needs speed 0
+  at both ends, or a segment that is not a gap).
 * **Total time** is a second figure, derived rather than stored: wall-clock time from the trip's start to now (or to
   the saved end time), paused time included, never less than the active duration
   (`TripStats.totalDurationMillis`). Because it needs no new column, Room is unchanged. While a trip is `RUNNING` or
@@ -72,7 +82,9 @@ Reject a fix when any applies: speed missing / NaN / negative; accuracy missing 
 non-increasing timestamp; speed above a physical cap (~150 m/s); implied acceleration spike
 (>~12 m/s² vs previous accepted fix); reported speed grossly inconsistent with the displacement between fixes.
 Treat tiny speeds (<~0.5 m/s) as 0 and ignore displacement below the accuracy noise floor so a parked
-phone does not accumulate distance. Never fabricate a reading: no fix → `LiveSpeed.Unavailable`.
+phone does not accumulate distance. A fix that fails the relative checks against the reference but agrees with
+the fix rejected just before it is accepted (`Corroboration.REJECTED_FIX`): two agreeing fixes outvote one, so a
+glitch that became the reference after a gap cannot block honest fixes for the whole relative window. Never fabricate a reading: no fix → `LiveSpeed.Unavailable`.
 Conversion: km/h = m/s × 3.6 (`SpeedUnit`).
 
 ## Concurrency
@@ -85,6 +97,44 @@ state mutation (single writer). `TrackingController` commands are thread-safe.
 Room (`data/db`) with exported schemas in `app/schemas/`; DataStore Preferences for settings;
 `TripCheckpointStore` persists the in-progress trip about every 5 s of active time and on every phase change.
 `TripRepository.saveTrip` is idempotent by trip id.
+
+* `CheckpointWriter` never silently replaces another trip's checkpoint: before the first save of a trip it hands
+  any other checkpoint to the tracker, which files it into History (finished at its last checkpoint) unless it is
+  already stored or was discarded. This covers Start tapped before recovery ran, and recovery failing to read.
+* A failed checkpoint delete is retried before every later operation; until it succeeds, loading reports no
+  checkpoint, so a finished or discarded trip cannot come back in the same process.
+* `RoomTripCheckpointStore.load` deletes only a row it cannot decode; a locked or failing database propagates
+  and keeps the row. Recovery keeps the checkpoint when it cannot tell whether the trip is already in History.
+* Screens never crash on database errors: History shows "Couldn't read your trips", deletes report failure.
+* The settings flow retries after an I/O error (growing delay) instead of completing.
+* `DatabaseSchemaPolicyTest` (JVM) fails when a version bump lacks its exported schema or its migration.
+
+## UI behaviour worth knowing
+
+* **Double taps.** Trip buttons swap places when the phase changes, so `DashboardViewModel` ignores trip commands
+  for `DOUBLE_TAP_GUARD_MILLIS` (600 ms) after a phase change it made. Navigation ignores taps on a destination
+  that is no longer resumed, so a double tap on Back cannot pop the dashboard.
+* **Configuration changes** keep the GPS listener (`MainActivity` skips `setUiVisible(false)` while
+  `isChangingConfigurations`).
+* **Location permission gate.** "Blocked" (only Settings can help) is reported only once Android has stopped
+  asking: the rationale flag was true at some point and is false again, or a request returned without a dialog.
+* **Speed alert.** `SpeedAlertMonitor`: one vibration per crossing, 1 m/s hysteresis, unchanged through GPS gaps;
+  only while the dashboard is shown.
+
+## Known limitations (reviewed, not fixed)
+
+* **Wall-clock jumps.** Total time and a trip's end time use the wall clock; a manual clock change or a large
+  network correction during a trip skews total time (never below active time) and History order.
+* **Provider state while the GPS listener is released.** `refreshEnvironment()` re-reads the permission only;
+  whether Location is on is learned from the next listener event, so a Start in the first moment after returning
+  to the app can see a stale value.
+* **Battery saver location modes** that stop GPS with the screen off (`LOCATION_MODE_GPS_DISABLED_WHEN_SCREEN_OFF`)
+  are not detected; the trip keeps counting time without distance. Unverified on a device.
+* **History day headers** ("Today") are computed when the list is drawn and do not roll over at midnight while
+  the screen stays open.
+* **First frame.** Screens start from default settings until DataStore has been read (a few milliseconds), so an
+  mph user can see "km/h" for one frame.
+* **Speed alert** works only while the dashboard is on screen, not from the background.
 
 ## Material 3 Expressive
 
