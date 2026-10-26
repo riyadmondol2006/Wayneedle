@@ -17,7 +17,7 @@ You may compile, run JVM unit tests, run lint, and write instrumentation test *s
 * Warnings are errors (`allWarningsAsErrors`, lint `warningsAsErrors`). Fix, don't suppress, unless justified in a comment.
 * Do not edit `*.gradle.kts`, `gradle/**`, `AndroidManifest.xml`, or `domain/**` (maintainer-owned). Request changes in your report or pull request description.
 * No new dependencies: everything needed is already in `gradle/libs.versions.toml`. If something is missing, say so.
-* No network, analytics, crash reporters, or INTERNET permission. Ever.
+* No network access beyond the existing update check in `app.wayneedle.update`; no analytics or crash reporters. Ever.
 
 ## Building and testing (memory is limited on this machine — be frugal)
 

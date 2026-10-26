@@ -27,8 +27,8 @@ disclosed in coordination with the reporter.
 
 In scope:
 
-* Any way for the app to transmit data off the device, including a network permission appearing in the merged
-  manifest.
+* Any way for the app to transmit data off the device other than the documented update check (see
+  [PRIVACY.md](PRIVACY.md)), or a way to make the update check contact another server or act on a forged release.
 * Exposure of location, trip or settings data to other apps or to backups.
 * Components that are exported or reachable by other apps in ways they should not be (the foreground service,
   notification actions, intents).
@@ -39,8 +39,13 @@ compromised device, and GPS spoofing, which no app can detect reliably.
 
 ## Design measures
 
-* The manifest has no `INTERNET` permission and the app has no networking or analytics dependencies. Automated tests
-  fail the build if either changes.
+* The only network access is the update check, which reads one GitHub API address over HTTPS, caps the response
+  size, accepts only release pages of this repository, and never downloads or installs anything itself. Automated
+  tests fail the build if networking code appears outside `app.wayneedle.update`, if another URL appears in the
+  code, or if networking or analytics dependencies are added.
+* Releases are built, verified with `apksigner` and published by a workflow from the commit on `main`, with a
+  SHA-256 checksum; the signing key lives only in repository secrets ([docs/RELEASING.md](docs/RELEASING.md)).
 * App data is private to the app, and cloud backup is disabled.
 * Dependencies use exact, stable versions; the Gradle wrapper checksum is pinned and validated in CI.
-* CI workflows run with read-only repository permissions, and third-party actions are pinned by commit SHA.
+* The CI workflow runs with read-only repository permissions; only the release workflow may write (to create the
+  release). Third-party actions are pinned by commit SHA.

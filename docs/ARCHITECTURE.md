@@ -9,9 +9,11 @@ app.wayneedle
 │   └── model/
 ├── tracking/          GPS + trip engine. Pure Kotlin, except tracking/platform/ (LocationManager adapter, SystemTimeSource)
 ├── data/              Room database, DataStore settings, repositories, checkpoint store
+├── alert/             Speed alert: crossing detection and vibration/beep, shared by the dashboard and the service
+├── update/            The daily update check: the only code allowed to use the network
 ├── permissions/       Permission status checker; AppPermissions (contract constants, maintainer-owned)
 ├── service/           Foreground service, notification, TripForegroundLauncher implementation
-├── ui/                Compose UI, theme, view models, navigation, previews
+├── ui/                Compose UI, theme, view models, navigation, HUD mode, previews
 ├── AppContainer.kt    Manual DI (maintainer-owned). WayneedleApplication holds the container.
 ```
 
@@ -23,7 +25,8 @@ app.wayneedle
 | `tracking/**`, `src/test/.../tracking/**` | GPS & trip engine |
 | `ui/**`, `res/**` (except below), `src/androidTest/.../ui/**` | UI and design system |
 | `data/**`, `src/test/.../data/**`, `src/androidTest/.../data/**` | Database and settings |
-| `service/**`, `permissions/` (except `AppPermissions.kt`), `res/drawable/ic_notification*`, `src/test/.../service/**` | Background tracking and Android integration |
+| `service/**`, `alert/**`, `permissions/` (except `AppPermissions.kt`), `res/drawable/ic_notification*`, `src/test/.../service/**`, `src/test/.../alert/**` | Background tracking and Android integration |
+| `update/**`, `src/test/.../update/**`, `.github/workflows/release.yml` | Maintainers (network and release) |
 | `README.md`, `LICENSE`, `CONTRIBUTING.md`, `PRIVACY.md`, `.gitignore`, `.editorconfig`, `config/**`, `.github/**`, `docs/**` (except ARCHITECTURE.md), `src/test/.../testing/Fixtures.kt`, architecture tests | Quality, tests and documentation |
 
 If you need a change in a file you do not own (e.g. a missing field in a contract), **do not edit it** —
@@ -62,7 +65,11 @@ It never talks to `LocationManager`.
 * Duration, distance and max speed change **only while `RUNNING`**.
 * Distance accumulates between consecutive *accepted* fixes. After start **and after resume** the first
   accepted fix is only an anchor (no distance); `awaitingFix = true` until it arrives.
-* Average speed = distance ÷ active duration (`TripStats.averageSpeedMps`).
+* Average speed = distance ÷ active duration (`TripStats.averageSpeedMps`), shown as "Avg, no pauses".
+* **Moving time** (`movingDurationMillis`) is the time of the segments that counted as distance, so stops while
+  recording are left out; **moving average** = distance ÷ moving time. Null for trips saved before schema 2.
+* **Ascent/descent** come from GPS altitude of fixes taken while moving with vertical accuracy ≤ 20 m, in hysteresis
+  steps of max(5 m, the two fixes' vertical accuracies). Approximate; null when the receiver gave no altitude.
 * Max speed is the speed held across two consecutive accepted fixes (the lower of the pair), where the second was
   cross-checked against the first (`Corroboration.PREVIOUS_FIX`). One glitched reading never sets the record.
 * A segment longer than `DistanceConfig.GAP_MILLIS` (a GPS gap) is held until the next fix confirms its end, then
@@ -70,7 +77,7 @@ It never talks to `LocationManager`.
   at both ends, or a segment that is not a gap).
 * **Total time** is a second figure, derived rather than stored: wall-clock time from the trip's start to now (or to
   the saved end time), paused time included, never less than the active duration
-  (`TripStats.totalDurationMillis`). Because it needs no new column, Room is unchanged. While a trip is `RUNNING` or
+  (`TripStats.totalDurationMillis`), so it needs no database column. While a trip is `RUNNING` or
   `PAUSED` the dashboard view model ticks a clock once a second, since the tracker publishes nothing while paused.
   The gap after process death is not active time but does count toward total time, as paused time.
 * Live speed is shown whenever a reliable fix exists, even when IDLE/PAUSED, but is *not* added to stats while not RUNNING.
@@ -118,8 +125,31 @@ Room (`data/db`) with exported schemas in `app/schemas/`; DataStore Preferences 
   `isChangingConfigurations`).
 * **Location permission gate.** "Blocked" (only Settings can help) is reported only once Android has stopped
   asking: the rationale flag was true at some point and is false again, or a request returned without a dialog.
-* **Speed alert.** `SpeedAlertMonitor`: one vibration per crossing, 1 m/s hysteresis, unchanged through GPS gaps;
-  only while the dashboard is shown.
+* **Speed alert.** `alert.SpeedAlertMonitor`: one alert per crossing, 1 m/s hysteresis, unchanged through GPS gaps.
+  While the app is visible (`TrackingState.uiVisible`) the dashboard alerts (red dial, limit mark, status pill,
+  vibration and optional beep); otherwise the foreground service alerts during a `RUNNING` trip. Returning to the app
+  while still above the limit alerts once more, because the dashboard starts its own monitor.
+* **Keep screen on** (`KeepAwakePolicy`): only while moving (≥ 1 m/s) and for 5 minutes after the last movement or
+  a trip start/resume, so a phone left on the dashboard reaches its normal screen timeout.
+* **HUD mode**: full-screen white-on-black speed, optionally mirrored for windscreen reflection, immersive, keeps the
+  screen on while shown.
+
+## Battery
+
+* One GPS listener, released whenever the app is hidden and no trip is running.
+* The tracker's duration ticker runs every second while the UI is visible and every 5 s in the background.
+* The notification is updated at most once a second, once per 30 s with the screen off.
+* The activity is never kept awake while the phone is still (see Keep screen on).
+
+## Network: the update check
+
+The app's only network access is `update.GitHubReleaseSource`: release builds ask
+`https://api.github.com/repos/riyadmondol2006/Wayneedle/releases/latest` at most once a day when the app opens
+(`UpdateChecker`, failures retried on the next open), and offer a newer, non-draft, non-prerelease version in a
+dialog that opens the release page in the browser. The request has a 10 s timeout, the response is capped at 1 MB,
+and only release pages of this repository are accepted. Settings › Updates switches it off; debug builds never check.
+`ArchitectureTest` fails the build if networking APIs appear outside `app.wayneedle.update` or another URL appears
+in main sources, and `RepositoryHygieneTest` allows `INTERNET` only in the main manifest.
 
 ## Known limitations (reviewed, not fixed)
 
@@ -128,13 +158,14 @@ Room (`data/db`) with exported schemas in `app/schemas/`; DataStore Preferences 
 * **Provider state while the GPS listener is released.** `refreshEnvironment()` re-reads the permission only;
   whether Location is on is learned from the next listener event, so a Start in the first moment after returning
   to the app can see a stale value.
-* **Battery saver location modes** that stop GPS with the screen off (`LOCATION_MODE_GPS_DISABLED_WHEN_SCREEN_OFF`)
-  are not detected; the trip keeps counting time without distance. Unverified on a device.
+* **Battery saver location modes** that stop GPS with the screen off are detected and the dashboard warns, but the
+  trip still keeps counting time without distance while the screen is off. The warning has not been seen on a device.
 * **History day headers** ("Today") are computed when the list is drawn and do not roll over at midnight while
   the screen stays open.
 * **First frame.** Screens start from default settings until DataStore has been read (a few milliseconds), so an
   mph user can see "km/h" for one frame.
-* **Speed alert** works only while the dashboard is on screen, not from the background.
+* **Speed alert** in the background needs a running trip (the foreground service); with no trip it works only while
+  the app is on screen.
 
 ## Material 3 Expressive
 

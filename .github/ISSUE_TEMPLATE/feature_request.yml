@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Wayneedle stays offline, ships without analytics or third-party SDKs, and stores no raw location data.
-        Requests that need a network connection will not be accepted.
+        Wayneedle works offline, ships without analytics or third-party SDKs, and stores no raw location data.
+        Its only network use is the optional update check; requests that need a network connection will not be accepted.
   - type: textarea
     id: problem
     attributes:
@@ -28,5 +28,5 @@ body:
     attributes:
       label: Project constraints
       options:
-        - label: This does not need the INTERNET permission, analytics or a third-party SDK.
+        - label: This does not need a network connection, analytics or a third-party SDK.
           required: true

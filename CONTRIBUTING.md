@@ -1,14 +1,14 @@
 # Contributing to Wayneedle
 
-Thank you for helping. Wayneedle is a small, offline, Kotlin-only app, and the rules below keep it that way.
+Thank you for helping. Wayneedle is a small, offline-first, Kotlin-only app, and the rules below keep it that way.
 By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Your contributions are licensed under
 the [Apache License 2.0](LICENSE), the same as the project.
 
 ## Non-negotiable rules
 
 * **100 % Kotlin.** No Java sources and no Groovy build scripts. Gradle files use the Kotlin DSL.
-* **No network access.** Do not add the `INTERNET` permission, an HTTP client, or any hard-coded URL that the app
-  would open itself.
+* **No new network access.** The only network use is the optional update check in `app.wayneedle.update`. Do not
+  add networking code anywhere else, an HTTP client library, or a hard-coded URL; tests enforce this.
 * **No analytics, crash reporters, ads or third-party SDKs.** Dependencies are limited to Kotlin, AndroidX and
   Compose. A new dependency needs a clear reason in the pull request.
 * **Never log or persist raw coordinates.** Location samples are processed in memory; only trip summaries are stored.
@@ -81,7 +81,7 @@ assembleDebug`. It never runs an emulator or instrumentation tests.
 Copy this into the description (the template does it for you):
 
 - [ ] The change is Kotlin only and keeps the layering rules.
-- [ ] No network access: no `INTERNET` permission, HTTP client or hard-coded URL; no analytics or tracking.
+- [ ] No new network access: no networking code outside the update check, no HTTP client or hard-coded URL; no analytics or tracking.
 - [ ] No new dependency, or the new dependency is justified, an exact stable version, and from AndroidX/Kotlin.
 - [ ] No coordinates are logged or stored.
 - [ ] Tests added or updated, and `./gradlew testDebugUnitTest lintDebug staticAnalysis assembleDebug` passes.

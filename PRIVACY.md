@@ -1,13 +1,14 @@
 # Privacy
 
-Wayneedle is built so that your location never leaves your phone. This page says what the app uses, what it
+Wayneedle is built so that your location and your trips never leave your phone. This page says what the app uses, what it
 stores, and how you can delete it. Every statement below describes how the app is designed and built; where a
 statement is checked automatically, that is noted.
 
 **Summary**
 
 * Your location is used on the device, only to show your speed and to record trips you start.
-* The app has no network permission, so it cannot send anything anywhere.
+* The only network request is an optional daily update check that asks GitHub for this project's latest release.
+  It sends no location, trip data or identifier, and you can switch it off.
 * There are no accounts, no analytics, no crash reporting, no advertising and no third-party SDKs.
 * Trip summaries are stored on the device and are excluded from cloud backup.
 * You can delete your data at any time (see [Deleting your data](#deleting-your-data)).
@@ -32,8 +33,9 @@ statement is checked automatically, that is noted.
 | `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` | Lets a running trip keep recording while the screen is off or another app is in front. |
 | Notifications (`POST_NOTIFICATIONS`, Android 13 and newer) | Shows the ongoing notification described below. |
 | Vibration (`VIBRATE`) | The optional speed alert vibrates briefly when you go above your limit. Granted at install; it gives no access to any data. |
+| Internet (`INTERNET`) | Only for the update check described below. Granted at install. |
 
-The app does **not** request `INTERNET`, contacts, storage, camera, microphone or background location.
+The app does **not** request contacts, storage, camera, microphone or background location.
 
 ## The foreground-service notification
 
@@ -53,15 +55,25 @@ recorded while the app is not running, and that gap is not added to the trip.
 |---|---|---|
 | Finished trips | Room (SQLite) database in the app's private storage | Trip id, start and end time, distance, active duration, top speed. No coordinates. |
 | In-progress trip | Same database, a single checkpoint | The same summary figures plus the phase (running or paused). Written about every few seconds of active time and on every phase change, so a trip can be recovered after a crash. Deleted when the trip is finished or discarded. |
-| Settings | DataStore (Preferences) in the app's private storage | Speed unit, theme, dynamic colour, keep-screen-on, speed alert on/off and limit. |
+| Settings | DataStore (Preferences) in the app's private storage | Speed unit, theme, dynamic colour, keep-screen-on, speed alert on/off, limit and sound, update check on/off. |
+| Update check | SharedPreferences in the app's private storage | When the last check succeeded and a version you chose to skip. |
 | Permission prompts | SharedPreferences in the app's private storage | Whether the location and notification dialogs were shown before, so the app knows when Android has stopped asking. |
 
 All of this lives in the app's private storage, which other apps cannot read on an unmodified device.
 
 ## Network, backup and third parties
 
-* **No network.** The manifest declares no `INTERNET` permission, and an automated test fails the build if one
-  appears, including one added by a dependency.
+* **One network request: the update check.** Release builds ask GitHub at most once a day, when you open the app,
+  for the latest release of this repository (`https://api.github.com/repos/riyadmondol2006/Wayneedle/releases/latest`),
+  and offer a newer version in a popup. The request carries only the app name and version in its `User-Agent`
+  header. It contains no location, trip data, settings or device identifier; like any web request, GitHub sees your
+  IP address ([GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)).
+  "Download" opens the release page in your browser; the app never downloads or installs anything itself. Switch the
+  check off in Settings › Updates. Debug builds never check.
+* **Nothing else uses the network.** Automated tests fail the build if networking code appears outside the update
+  check (`app.wayneedle.update`), if a URL other than this repository's GitHub addresses appears in the app's code,
+  or if the `INTERNET` permission appears in any manifest other than the app's own (one added by a dependency, for
+  example).
 * **No third-party SDKs.** Dependencies are Kotlin, AndroidX and Jetpack Compose libraries. An automated test fails
   the build if analytics, crash-reporting, advertising or networking libraries are added to the build files.
 * **No cloud backup.** The manifest sets `allowBackup="false"` and the data-extraction rules exclude all app data

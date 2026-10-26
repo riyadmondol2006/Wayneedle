@@ -9,7 +9,7 @@
 ## Checklist
 
 - [ ] The change is Kotlin only and keeps the layering rules in `docs/ARCHITECTURE.md`.
-- [ ] No network access: no `INTERNET` permission, HTTP client or hard-coded URL; no analytics or tracking.
+- [ ] No new network access: no networking code outside the update check, no HTTP client or hard-coded URL; no analytics or tracking.
 - [ ] No new dependency, or the new dependency is justified, an exact stable version, and from AndroidX/Kotlin.
 - [ ] No coordinates are logged or stored.
 - [ ] Tests added or updated, and `./gradlew testDebugUnitTest lintDebug staticAnalysis assembleDebug` passes.

@@ -8,8 +8,8 @@ hardware, and how results are recorded. Nothing here claims a result that is not
 | Layer | What it proves | Runs where | Command |
 |---|---|---|---|
 | Compiler | No warnings (`allWarningsAsErrors`) | Dev machine, CI | any build |
-| JVM unit tests | Tracking engine, trip rules, unit conversion, fixtures | Dev machine, CI | `./gradlew testDebugUnitTest` |
-| Architecture and hygiene tests | Layering, one GPS owner, no network, Kotlin only, pinned versions | Dev machine, CI | part of `testDebugUnitTest` |
+| JVM unit tests | Tracking engine, trip rules, recovery, unit conversion, update check, chaos test | Dev machine, CI | `./gradlew testDebugUnitTest` |
+| Architecture and hygiene tests | Layering, one GPS owner, network only in the update check, Kotlin only, pinned versions | Dev machine, CI | part of `testDebugUnitTest` |
 | Android Lint | Android API and resource problems (warnings are errors) | Dev machine, CI | `./gradlew lintDebug` |
 | ktlint through Spotless | Code style | Dev machine, CI | `./gradlew spotlessCheck` |
 | Instrumentation tests | Behaviour on real Android: Room, permissions, service, UI | **Google Pixel 6 Pro only** | `scripts/run-on-pixel-6-pro.sh connectedDebugAndroidTest` |
@@ -80,10 +80,12 @@ against synthetic violations so a rule cannot go green by matching nothing.
 | `data/` and `ui/` do not use `service/` or `tracking/`; `ui/` does not use `androidx.room`; `service/` does not use `tracking/` | `ArchitectureTest` |
 | Only `tracking/platform/AndroidLocationSource` references `android.location`, `LocationManager` or location-update APIs | `ArchitectureTest` |
 | `ui/`, `service/`, `data/` and `permissions/` never reference `LocationSource` (the one-GPS-owner rule) | `ArchitectureTest` |
-| No `http://` or `https://` string literals in main sources (allowlist in `ArchitectureRules.allowedUrlPrefixes`, empty) | `ArchitectureTest` |
+| No `http://` or `https://` string literals in main sources except this repository's GitHub addresses (allowlist in `ArchitectureRules.allowedUrlPrefixes`) | `ArchitectureTest` |
+| Networking APIs (`java.net`, `javax.net`, `HttpURLConnection`, sockets) only in `app.wayneedle.update` | `ArchitectureTest` |
 | No single-line log or print call that mentions a coordinate or a whole fix (best-effort tripwire) | `ArchitectureTest` |
 | No `.java` and no Groovy build scripts anywhere | `ArchitectureTest` |
-| No `android.permission.INTERNET` in any source-set manifest, or in the merged manifests when a build has produced them | `RepositoryHygieneTest` |
+| `android.permission.INTERNET` only in `src/main/AndroidManifest.xml` (for the update check), in no other source-set manifest | `RepositoryHygieneTest` |
+| Every Room database version has an exported schema and a registered migration | `DatabaseSchemaPolicyTest` |
 | `android:allowBackup="false"` in the main manifest | `RepositoryHygieneTest` |
 | Version catalog and build scripts: no `+`, ranges, `latest`, snapshot, alpha, beta, rc, dev, eap or milestone versions | `RepositoryHygieneTest` |
 | `org.jetbrains.kotlin.android` is not applied | `RepositoryHygieneTest` |
@@ -184,8 +186,8 @@ subcommand (below), which names the device explicitly, or unplug the other phone
 
 ### Running the instrumentation tests
 
-The suite lives in `app/src/androidTest` (86 tests: Room DAOs and migrations, the notification, every UI screen and
-the end-to-end location tests). With another phone attached, run it with an explicit serial instead of
+The suite lives in `app/src/androidTest` (96 tests: Room DAOs and migrations, the notification, every UI screen
+including HUD mode, the end-to-end location tests, recording in deep Doze, and parsing of GitHub release responses). With another phone attached, run it with an explicit serial instead of
 `connectedDebugAndroidTest`:
 
 ```sh
@@ -209,6 +211,11 @@ Things the suite needs, all learned on the device:
   shell user and cannot set a speed anyway.
 * **A visible app.** "While using the app" location is only delivered while the app is visible, which is why those
   tests keep a resumed activity (the service test then closes it to prove the foreground service keeps GPS alive).
+* **No trip in progress.** The end-to-end and Doze tests skip when a trip is already running or paused on the
+  phone, and discard only the trips they started, so a real trip is never touched. Finish or discard it first.
+* **Deep Doze.** `BackgroundRecordingDozeTest` turns the screen off, forces deep Doze
+  (`dumpsys deviceidle force-idle`) through the instrumentation's shell, checks that fixes still reach the trip, and
+  restores the device (`deviceidle unforce`, screen on) afterwards.
 * **Locale.** Numbers are formatted for the device locale (a phone set to `en-PT` prints `0,12 km`). Tests must
   not hard-code a decimal separator; use `localizedDecimal(...)` from `UiTestUtils`.
 * **The fixes are scripted, not satellite measurements.** These tests prove the pipeline (Android location stack,
@@ -247,14 +254,19 @@ These scenarios need real GPS and cannot be judged on the JVM. Each is run on th
 
 ### Checklist status (2026-10-26)
 
-Covered by the automated device run above (with scripted fixes): pause/resume accounting, first fix after resume
-only anchoring, GPS listener released when the app is hidden and no trip runs, Pause/Resume from the notification,
-the trip surviving the activity being closed because of the foreground service, finish stopping the service.
+Covered by the automated device runs (with scripted fixes): pause/resume accounting, first fix after resume only
+anchoring, GPS listener released when the app is hidden and no trip runs, Pause/Resume from the notification, the
+trip surviving the activity being closed because of the foreground service, finish stopping the service, and
+recording with the screen off in forced deep Doze.
 
-**Not done yet, and needing a person with the phone outdoors**: everything that depends on real satellites
-(standing still, a measured walk, drive or cycle, tunnels), "screen off for 10 minutes" under Doze, process death
-recovery (`kill`), Task Manager "Stop", swipe-dismissing the notification on Android 17, permission revocation
-mid-trip, and GPS switched off mid-trip. Nothing in this project claims those have been verified.
+Covered by hand (see the log): standing still for 2 minutes with a real satellite fix (0.00 km), a 5-minute
+screen-off trip (battery measurement), rotation, km/h, recovery after a force-stop and after an app update.
+
+**Not done yet, and needing a person with the phone outdoors**: everything that depends on real satellites while
+moving (a measured walk, drive or cycle, tunnels), screen off for 10 minutes or more in natural (not forced) Doze,
+process death by `am kill` mid-trip, Task Manager "Stop", swipe-dismissing the notification on Android 17,
+permission revocation mid-trip, GPS switched off mid-trip, and the update popup with a real published release.
+Nothing in this project claims those have been verified.
 
 ## Device log
 
@@ -267,6 +279,18 @@ record device serial numbers, coordinates or GPS tracks.
 | 2026-10-26 | adb4420 | same | Manual: first launch, permission flow, idle/running/paused/finished dashboard, History, Settings, delete-all, with mock-driven fixes | Pass | Visual check by screenshot. Real GNSS status was live ("0 of 4 satellites") but no fix indoors. |
 | 2026-10-26 | 2c7c796 | same | Full instrumentation suite (`am instrument`), 86 tests | Pass (86/86) | Same scripted-fix setup as above. Two UI tests gained a total-time assertion. |
 | 2026-10-26 | 2c7c796 | same | Manual: Start, 10 s running, Pause, wait, Finish, trip details, delete; also force-stop while paused (recovery) | Pass | No GPS fix indoors, so distance stayed 0. Active time froze at the Pause tap while total time kept counting, and the saved total stayed fixed. Found and fixed a clipped total-time tile in the paused layout. |
+| 2026-10-26 | 42a7eb3 | same | Full instrumentation suite, 86 tests | **Fail (70/86)** | 16 Compose UI tests failed with "No compose hierarchies found": the display had gone to sleep and locked during the run, so no activity was resumed. An environment problem, not an app failure. |
+| 2026-10-26 | 42a7eb3 | same | The 41 tests in the failing classes, then the full suite, screen kept awake and unlocked | Pass (41/41, then 86/86) | |
+| 2026-10-26 | 42a7eb3 + uncommitted tree | same | Manual with scripted fixes: speed alert (red dial, limit mark, one vibration per crossing in the vibrator log), CSV export through the system file picker (file content checked, then deleted), History totals, double-tap on Start, notifications-off warning and its "Turn on" button, rotation | Pass | Rotation did not re-register the GPS listener (location event log). Rotation settings restored afterwards. |
+| 2026-10-26 | 42a7eb3 + uncommitted tree | same | **Real satellites**: trip with the phone lying still for 2 minutes | Pass | Accuracy 8 to 9 m, 11 to 13 satellites used. Distance 0,00 km, top speed 0 after 2 min 0 s. |
+| 2026-10-26 | e993d8d (before commit) | same | `TrackingServiceEndToEndTest` | Fail, then pass | Found a race introduced by an uncommitted change: a stale "Paused" notification could reappear after Finish. Fixed (250 ms settle after a phase change and an explicit cancel on stop); the test then passed 5 times in a row. |
+| 2026-10-26 | e993d8d + uncommitted tree | same | Keep screen on; 5-minute screen-off trip with `batterystats` reset first | Pass | `KEEP_SCREEN_ON` absent while idle with the phone still, present after Start. Over the trip Android attributed 1.65 mAh to the app (debug build), with 3 notification posts and about 12.5 s CPU. |
+| 2026-10-26 | 09a4a80 (before commit) | same | App update over the previous build with two saved trips and a trip in progress (database schema 1 to 2) | Pass | Both trips kept with their figures; the in-progress trip came back as "Recovered trip" and resumable. |
+| 2026-10-26 | 09a4a80 (before commit) | same | Full instrumentation suite, 90 tests | **Fail (89/90)** | `BackgroundRecordingDozeTest` met the recovered, paused trip left by the app-update check above and could not start. The end-to-end tests now skip when a trip is in progress and discard only their own trips. |
+| 2026-10-26 | 09a4a80 | same | Full instrumentation suite, 90 tests | Pass (90/90) | Includes recording with the screen off in forced deep Doze. |
+| 2026-10-26 | da16377 (before commit) | same | `GitHubReleaseParsingTest`; Settings › Updates › "Check now" | Pass (3/3) | The real request reached GitHub and reported "You have the latest version" (no release published yet). The popup for a newer release has not been seen on a device. |
+| 2026-10-26 | f866d40 (before commit) | same | Full instrumentation suite, 96 tests | Pass (96/96) | |
+| 2026-10-26 | f866d40 (before commit) | same | Manual with scripted fixes: heading after the unit, GPS details dialog, HUD mode (mirror, full screen, exit), speed alert from the background service | Pass | Screenshots and the vibrator log. With the app in the background the alert vibrated once on crossing, and once more on returning to the app while still above the limit. |
 
 ## Continuous integration
 
@@ -275,3 +299,8 @@ record device serial numbers, coordinates or GPS tracks.
 `./gradlew testDebugUnitTest lintDebug staticAnalysis assembleDebug` and uploads the reports when a step fails. It
 does not start an emulator and does not run instrumentation tests. The same Gradle command was run locally on
 JDK 17; the workflow itself has been linted but has not yet run on GitHub.
+
+`.github/workflows/release.yml` runs on every push to `main`: the same tests and checks, then a signed release
+build published as a GitHub Release ([RELEASING.md](RELEASING.md)). The signing and version steps were checked
+locally with a throwaway key (`apksigner verify` passed, version code and name taken from the run number); the
+workflow has not yet run on GitHub.
