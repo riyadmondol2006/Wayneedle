@@ -13,8 +13,9 @@ for what has and has not been checked.
 ## Features
 
 * **Live speedometer** in km/h or mph, available whenever the app is on screen, with or without a trip running.
-* **Trips**: start, pause, resume and finish. Each trip records distance, active duration, top speed and average
-  speed. Paused time is excluded from every figure.
+* **Trips**: start, pause, resume and finish. Each trip records distance, top speed and average speed, and two
+  times: **active time** (paused time excluded) and **total time** (start to finish, pauses included). Distance, top
+  speed and average speed never include paused time.
 * **History** of finished trips, stored locally.
 * **GPS status**: signal quality, accuracy and an explicit "no fix" state. A missing reading is never shown as
   0 km/h.

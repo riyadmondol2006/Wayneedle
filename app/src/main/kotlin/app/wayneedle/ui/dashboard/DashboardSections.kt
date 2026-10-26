@@ -206,7 +206,7 @@ private fun TileRows(
     }
 }
 
-/** The five trip numbers. While no trip exists they show "—" so the layout stays put when a trip starts. */
+/** The trip numbers: distance, active time, current/top/average speed and total time. While no trip exists they show "—" so the layout stays put when a trip starts. */
 @Composable
 internal fun TripStatsPanel(state: DashboardUiState, formatter: UiFormatter, modifier: Modifier = Modifier) {
     val trip = state.trip
@@ -267,6 +267,19 @@ internal fun TripStatsPanel(state: DashboardUiState, formatter: UiFormatter, mod
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TileRows(columns = columnsFor(2), tiles = headlineTiles)
         TileRows(columns = columnsFor(3), tiles = speedTiles)
+        TileRows(
+            columns = 1,
+            tiles = listOf { tileModifier ->
+                TotalTimeStatTile(
+                    trip.totalDurationMillis.takeIf {
+                        hasTrip
+                    },
+                    formatter,
+                    tileModifier,
+                    dimmed = !hasTrip,
+                )
+            },
+        )
     }
 }
 
@@ -491,6 +504,10 @@ internal fun TripSummaryCard(
                     { m -> SpeedStatTile(topLabel, trip.stats.maxSpeedMps, unit, formatter, m) },
                     { m -> SpeedStatTile(averageLabel, trip.stats.averageSpeedMps, unit, formatter, m) },
                 ),
+            )
+            TileRows(
+                columns = 1,
+                tiles = listOf { m -> TotalTimeStatTile(trip.totalDurationMillis, formatter, m) },
             )
             ExpressiveButtonRow(
                 primary = { buttonModifier, source ->

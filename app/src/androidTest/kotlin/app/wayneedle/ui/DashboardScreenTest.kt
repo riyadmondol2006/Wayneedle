@@ -74,7 +74,8 @@ class DashboardScreenTest {
     fun idleShowsPlaceholdersForTripStatistics() {
         show(PreviewData.dashboard(PreviewData.idleStationary))
         rule.onNodeWithText(string(R.string.stat_distance), useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText(string(R.string.stat_duration), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_active_time), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_total_time), useUnmergedTree = true).assertIsDisplayed()
     }
 
     // ---- running / paused -----------------------------------------------------------------------------------------

@@ -43,6 +43,9 @@ object PreviewData {
 
     val gpsOff = GpsStatus(providerEnabled = false, quality = GpsSignalQuality.NONE)
 
+    /** Paused time inside the sample trips, so their total time is longer than their active time. */
+    private const val EARLIER_PAUSE_MILLIS = 300_000L
+
     private val runningStats =
         TripStats(distanceMeters = 27_800.0, activeDurationMillis = 2_292_000L, maxSpeedMps = 31.4f)
 
@@ -68,7 +71,7 @@ object PreviewData {
         trip = TripState(
             phase = TripPhase.RUNNING,
             tripId = "trip-running",
-            startedAtEpochMillis = NOW - 2_292_000L,
+            startedAtEpochMillis = NOW - 2_292_000L - EARLIER_PAUSE_MILLIS,
             stats = runningStats,
         ),
     )
@@ -124,12 +127,13 @@ object PreviewData {
             isFinishing = isFinishing,
             savedTrip = savedTrip,
             hasGpsHardware = hasGpsHardware,
+            nowEpochMillis = NOW,
         )
     }
 
     val savedTrip = Trip(
         id = "trip-running",
-        startedAtEpochMillis = NOW - 2_292_000L,
+        startedAtEpochMillis = NOW - 2_292_000L - EARLIER_PAUSE_MILLIS,
         endedAtEpochMillis = NOW,
         stats = runningStats,
     )

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.wayneedle.domain.CommandResult
 import app.wayneedle.domain.FinishResult
 import app.wayneedle.domain.SettingsRepository
+import app.wayneedle.domain.TimeSource
 import app.wayneedle.domain.TrackingController
 import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.SpeedUnit
@@ -19,12 +20,16 @@ import app.wayneedle.ui.speedometer.GaugeScale
 import app.wayneedle.ui.speedometer.speedReading
 import app.wayneedle.ui.wayneedleApplication
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,6 +44,7 @@ import kotlinx.coroutines.withContext
 class DashboardViewModel(
     private val controller: TrackingController,
     settingsRepository: SettingsRepository,
+    private val timeSource: TimeSource,
     private val hasGpsHardware: Boolean,
 ) : ViewModel() {
     private data class Local(
@@ -47,7 +53,32 @@ class DashboardViewModel(
         val savedTrip: Trip? = null,
     )
 
+    private data class Inputs(
+        val state: TrackingState,
+        val unit: SpeedUnit,
+        val local: Local,
+        val nowEpochMillis: Long,
+    )
+
     private val local = MutableStateFlow(Local())
+
+    /**
+     * Wall-clock readings for the total trip time. It ticks once a second while a trip is RUNNING or PAUSED:
+     * the tracker publishes nothing while paused, but paused time still counts toward the total.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val clock: Flow<Long> = controller.state
+        .map { it.trip.phase == TripPhase.RUNNING || it.trip.phase == TripPhase.PAUSED }
+        .distinctUntilChanged()
+        .flatMapLatest { tripActive ->
+            flow {
+                emit(timeSource.epochMillis())
+                while (tripActive) {
+                    delay(CLOCK_TICK_MILLIS)
+                    emit(timeSource.epochMillis())
+                }
+            }
+        }
 
     val uiState: StateFlow<DashboardUiState> = flow {
         var scale = GaugeScale.base(SpeedUnit.KMH)
@@ -55,10 +86,22 @@ class DashboardViewModel(
             controller.state,
             settingsRepository.settings.map { it.speedUnit }.distinctUntilChanged(),
             local,
-        ) { state, unit, local -> Triple(state, unit, local) }
-            .collect { (state, unit, local) ->
+            clock,
+        ) { state, unit, local, now -> Inputs(state, unit, local, now) }
+            .collect { (state, unit, local, now) ->
                 scale = scale.extendedFor(unit, displayedSpeed(state, unit))
-                emit(buildUiState(state, unit, scale, local.dialog, local.isFinishing, local.savedTrip, hasGpsHardware))
+                emit(
+                    buildUiState(
+                        state,
+                        unit,
+                        scale,
+                        local.dialog,
+                        local.isFinishing,
+                        local.savedTrip,
+                        hasGpsHardware,
+                        now,
+                    ),
+                )
             }
     }.stateIn(
         scope = viewModelScope,
@@ -71,6 +114,7 @@ class DashboardViewModel(
             isFinishing = false,
             savedTrip = null,
             hasGpsHardware = hasGpsHardware,
+            nowEpochMillis = timeSource.epochMillis(),
         ),
     )
 
@@ -142,6 +186,8 @@ class DashboardViewModel(
     }
 
     companion object {
+        private const val CLOCK_TICK_MILLIS = 1_000L
+
         val Factory = viewModelFactory {
             initializer {
                 val application = wayneedleApplication()
@@ -149,6 +195,7 @@ class DashboardViewModel(
                 DashboardViewModel(
                     controller = container.trackingController,
                     settingsRepository = container.settingsRepository,
+                    timeSource = container.timeSource,
                     hasGpsHardware = application.packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS),
                 )
             }
@@ -170,9 +217,20 @@ internal fun buildUiState(
     isFinishing: Boolean,
     savedTrip: Trip?,
     hasGpsHardware: Boolean,
+    nowEpochMillis: Long,
 ): DashboardUiState {
     val phase = state.trip.phase
     val saved = savedTrip?.takeIf { phase == TripPhase.FINISHED }
+    val stats = saved?.stats ?: state.trip.stats
+    val startedAt = saved?.startedAtEpochMillis ?: state.trip.startedAtEpochMillis
+    val totalDurationMillis = when {
+        saved != null -> saved.totalDurationMillis
+
+        startedAt != null && (phase == TripPhase.RUNNING || phase == TripPhase.PAUSED) ->
+            stats.totalDurationMillis(startedAt, nowEpochMillis)
+
+        else -> null
+    }
     return DashboardUiState(
         unit = unit,
         gauge = GaugeUiState(
@@ -184,10 +242,11 @@ internal fun buildUiState(
         hasGpsHardware = hasGpsHardware,
         trip = TripUiState(
             phase = phase,
-            stats = saved?.stats ?: state.trip.stats,
+            stats = stats,
             currentSpeedMps = (state.liveSpeed as? LiveSpeed.Available)?.smoothedMps,
-            startedAtEpochMillis = saved?.startedAtEpochMillis ?: state.trip.startedAtEpochMillis,
+            startedAtEpochMillis = startedAt,
             endedAtEpochMillis = saved?.endedAtEpochMillis,
+            totalDurationMillis = totalDurationMillis,
             awaitingFix = state.trip.awaitingFix,
             recovered = state.trip.recovered,
             savedTripId = saved?.id,

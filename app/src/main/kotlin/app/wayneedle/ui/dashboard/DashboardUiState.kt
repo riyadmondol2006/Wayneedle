@@ -26,6 +26,8 @@ data class GaugeUiState(
 
 /**
  * @property currentSpeedMps latest display speed in m/s, or null when there is no reliable speed.
+ * @property totalDurationMillis start to now (or to the end of a saved trip), paused time included; null when
+ *   there is no trip or its start is unknown. [TripStats.activeDurationMillis] excludes pauses.
  * @property savedTripId id of the trip stored by this screen's Finish action, for the "View details" link.
  */
 @Immutable
@@ -35,6 +37,7 @@ data class TripUiState(
     val currentSpeedMps: Float? = null,
     val startedAtEpochMillis: Long? = null,
     val endedAtEpochMillis: Long? = null,
+    val totalDurationMillis: Long? = null,
     val awaitingFix: Boolean = false,
     val recovered: Boolean = false,
     val savedTripId: String? = null,

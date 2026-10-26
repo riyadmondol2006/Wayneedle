@@ -1,5 +1,6 @@
 package app.wayneedle.ui.dashboard
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -77,7 +78,7 @@ internal fun DistanceStatTile(
     )
 }
 
-/** Active trip duration as `H:MM:SS`; null shows "—". */
+/** Active trip time (paused time excluded) as `H:MM:SS`; null shows "—". */
 @Composable
 internal fun DurationStatTile(
     millis: Long?,
@@ -85,14 +86,13 @@ internal fun DurationStatTile(
     modifier: Modifier = Modifier,
     large: Boolean = true,
     dimmed: Boolean = false,
+    @StringRes labelRes: Int = R.string.stat_active_time,
 ) {
-    val label = stringResource(R.string.stat_duration)
+    val label = stringResource(labelRes)
     StatTile(
         label = label,
         value = if (millis == null) PLACEHOLDER else formatter.duration(millis),
-        spokenValue = if (millis ==
-            null
-        ) {
+        spokenValue = if (millis == null) {
             stringResource(R.string.spoken_no_value)
         } else {
             spokenDuration(millis, formatter)
@@ -102,3 +102,19 @@ internal fun DurationStatTile(
         modifier = modifier,
     )
 }
+
+/** Start-to-now time with pauses included, as `H:MM:SS`; null shows "—". */
+@Composable
+internal fun TotalTimeStatTile(
+    millis: Long?,
+    formatter: UiFormatter,
+    modifier: Modifier = Modifier,
+    dimmed: Boolean = false,
+) = DurationStatTile(
+    millis = millis,
+    formatter = formatter,
+    modifier = modifier,
+    large = false,
+    dimmed = dimmed,
+    labelRes = R.string.stat_total_time,
+)

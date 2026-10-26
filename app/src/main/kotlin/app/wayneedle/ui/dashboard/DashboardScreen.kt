@@ -27,8 +27,12 @@ import app.wayneedle.ui.format.rememberUiFormatter
 import app.wayneedle.ui.speedometer.GAUGE_HEIGHT_FRACTION
 import kotlin.math.max
 
-/** Height of everything on a compact screen except the gauge (header, stats, controls, gaps), at font scale 1. */
-private const val NON_GAUGE_HEIGHT_DP = 340f
+/**
+ * Height of everything on a compact screen except the gauge (header, stats, controls, gaps), at font scale 1,
+ * for the tallest state (PAUSED: two rows of controls). Measured on a 411x891 dp screen: about 321 dp scrolling
+ * content plus 148 dp of pinned controls. The gauge size must not depend on the phase, or it would jump.
+ */
+private const val NON_GAUGE_HEIGHT_DP = 470f
 private const val MIN_GAUGE_WIDTH_DP = 260f
 private const val WIDE_LAYOUT_MIN_WIDTH_DP = 600
 private val ScreenPadding = 16.dp

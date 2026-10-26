@@ -58,6 +58,11 @@ It never talks to `LocationManager`.
 * Distance accumulates between consecutive *accepted* fixes. After start **and after resume** the first
   accepted fix is only an anchor (no distance); `awaitingFix = true` until it arrives.
 * Average speed = distance ÷ active duration (`TripStats.averageSpeedMps`).
+* **Total time** is a second figure, derived rather than stored: wall-clock time from the trip's start to now (or to
+  the saved end time), paused time included, never less than the active duration
+  (`TripStats.totalDurationMillis`). Because it needs no new column, Room is unchanged. While a trip is `RUNNING` or
+  `PAUSED` the dashboard view model ticks a clock once a second, since the tracker publishes nothing while paused.
+  The gap after process death is not active time but does count toward total time, as paused time.
 * Live speed is shown whenever a reliable fix exists, even when IDLE/PAUSED, but is *not* added to stats while not RUNNING.
 
 ## GPS fix acceptance (guidance; the exact thresholds live in `FixFilterConfig` and are documented in KDoc there)

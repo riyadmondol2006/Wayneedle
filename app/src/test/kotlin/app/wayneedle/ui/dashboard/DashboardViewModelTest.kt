@@ -7,6 +7,7 @@ import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TripPhase
+import app.wayneedle.testing.FakeTimeSource
 import app.wayneedle.ui.MainDispatcherRule
 import app.wayneedle.ui.keepActive
 import app.wayneedle.ui.preview.FakeSettingsRepository
@@ -15,6 +16,9 @@ import app.wayneedle.ui.preview.PreviewData
 import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.SpeedUnavailableReason
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import java.io.IOException
@@ -30,11 +34,12 @@ class DashboardViewModelTest {
     val mainDispatcher = MainDispatcherRule()
 
     private val settings = FakeSettingsRepository()
+    private val timeSource = FakeTimeSource(wallClockMillis = PreviewData.NOW)
 
     private fun viewModel(
         controller: FakeTrackingController,
         hasGpsHardware: Boolean = true,
-    ) = DashboardViewModel(controller, settings, hasGpsHardware)
+    ) = DashboardViewModel(controller, settings, timeSource, hasGpsHardware)
 
     // ---- state mapping ----------------------------------------------------------------------------------------
 
@@ -124,6 +129,42 @@ class DashboardViewModelTest {
         assertEquals(TripPhase.PAUSED, recovered.phase)
         assertEquals(27_800.0, recovered.stats.distanceMeters)
         assertEquals(2_292_000L, recovered.stats.activeDurationMillis)
+    }
+
+    // ---- total time ---------------------------------------------------------------------------------------------
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `total time keeps counting every second while paused, active time does not`() = runTest {
+        val vm = viewModel(FakeTrackingController(PreviewData.paused))
+        keepActive(vm.uiState)
+        val start = vm.uiState.value.trip
+        assertEquals(2_592_000L, start.totalDurationMillis)
+
+        repeat(3) {
+            timeSource.advanceMillis(1_000L)
+            advanceTimeBy(1_000L)
+            runCurrent()
+        }
+
+        val later = vm.uiState.value.trip
+        assertEquals(2_595_000L, later.totalDurationMillis)
+        assertEquals(start.stats.activeDurationMillis, later.stats.activeDurationMillis)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `total time is absent without a trip and stays absent after a trip ends`() = runTest {
+        val controller = FakeTrackingController(PreviewData.running)
+        val vm = viewModel(controller)
+        keepActive(vm.uiState)
+        assertEquals(2_592_000L, vm.uiState.value.trip.totalDurationMillis)
+
+        controller.update { PreviewData.idleStationary }
+        timeSource.advanceMillis(5_000L)
+        advanceTimeBy(5_000L)
+        runCurrent()
+        assertNull(vm.uiState.value.trip.totalDurationMillis)
     }
 
     // ---- commands -------------------------------------------------------------------------------------------------

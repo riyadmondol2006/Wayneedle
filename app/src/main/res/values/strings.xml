@@ -69,7 +69,8 @@
     <string name="stat_top">Top speed</string>
     <string name="stat_average">Average</string>
     <string name="stat_distance">Distance</string>
-    <string name="stat_duration">Duration</string>
+    <string name="stat_active_time">Active time</string>
+    <string name="stat_total_time">Total time (with pauses)</string>
     <string name="spoken_no_value">no value yet</string>
 
     <!-- Spoken forms for screen readers -->

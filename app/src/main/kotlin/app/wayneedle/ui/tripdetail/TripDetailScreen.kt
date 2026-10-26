@@ -43,6 +43,7 @@ import app.wayneedle.ui.components.TitleScaffold
 import app.wayneedle.ui.dashboard.DistanceStatTile
 import app.wayneedle.ui.dashboard.DurationStatTile
 import app.wayneedle.ui.dashboard.SpeedStatTile
+import app.wayneedle.ui.dashboard.TotalTimeStatTile
 import app.wayneedle.ui.format.UiFormatter
 import app.wayneedle.ui.format.rememberUiFormatter
 import app.wayneedle.ui.icons.WayneedleIcons
@@ -168,6 +169,7 @@ private fun TripDetailContent(
                 repeat(columns - rowTiles.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+        TotalTimeStatTile(trip.totalDurationMillis, formatter, Modifier.fillMaxWidth())
         Surface(
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainer,

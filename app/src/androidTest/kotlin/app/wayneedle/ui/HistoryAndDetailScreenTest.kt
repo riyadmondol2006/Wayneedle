@@ -105,7 +105,8 @@ class HistoryAndDetailScreenTest {
     fun detailsShowEveryStatisticAndStartAndEndTimes() {
         showDetail(TripDetailUiState.Loaded(PreviewData.trips[1], SpeedUnit.KMH, confirmingDelete = false))
         rule.onNodeWithText(string(R.string.stat_distance), useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText(string(R.string.stat_duration), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_active_time), useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.stat_total_time), useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(string(R.string.stat_top), useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(string(R.string.stat_average), useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText(string(R.string.detail_started), useUnmergedTree = true).assertIsDisplayed()

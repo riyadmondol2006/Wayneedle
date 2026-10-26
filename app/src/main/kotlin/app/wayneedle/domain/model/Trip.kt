@@ -23,6 +23,14 @@ data class TripStats(
     val averageSpeedMps: Float
         get() = if (activeDurationMillis <= 0L) 0f else (distanceMeters / (activeDurationMillis / 1_000.0)).toFloat()
 
+    /**
+     * Wall-clock time from [startedAtEpochMillis] to [endEpochMillis], paused time included. Never less than
+     * [activeDurationMillis], so a clock adjustment during the trip cannot make the total shorter than the
+     * time that was actually recorded.
+     */
+    fun totalDurationMillis(startedAtEpochMillis: Long, endEpochMillis: Long): Long =
+        (endEpochMillis - startedAtEpochMillis).coerceAtLeast(activeDurationMillis)
+
     companion object {
         val Empty = TripStats()
     }
@@ -52,7 +60,11 @@ data class Trip(
     val startedAtEpochMillis: Long,
     val endedAtEpochMillis: Long,
     val stats: TripStats,
-)
+) {
+    /** Start to finish, paused time included; [TripStats.activeDurationMillis] is the part spent recording. */
+    val totalDurationMillis: Long
+        get() = stats.totalDurationMillis(startedAtEpochMillis, endedAtEpochMillis)
+}
 
 /** Persisted snapshot of an in-progress trip, used to recover from process death. */
 data class TripCheckpoint(

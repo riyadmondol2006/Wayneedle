@@ -56,10 +56,50 @@ class DashboardLogicTest {
             isFinishing = false,
             savedTrip = null,
             hasGpsHardware = true,
+            nowEpochMillis = PreviewData.NOW,
         )
         assertNull(state.trip.savedTripId)
         assertEquals(PreviewData.finished.trip.stats, state.trip.stats)
         assertTrue(state.trip.phase == TripPhase.FINISHED)
+    }
+
+    @Test
+    fun `total time spans start to now and includes the pause that active time leaves out`() {
+        val running = PreviewData.dashboard(PreviewData.running).trip
+        assertEquals(2_292_000L, running.stats.activeDurationMillis)
+        assertEquals(2_592_000L, running.totalDurationMillis)
+    }
+
+    @Test
+    fun `a paused trip keeps accruing total time while its active time stands still`() {
+        fun paused(now: Long) = buildUiState(
+            state = PreviewData.paused,
+            unit = SpeedUnit.KMH,
+            scale = GaugeScale.base(SpeedUnit.KMH),
+            dialog = null,
+            isFinishing = false,
+            savedTrip = null,
+            hasGpsHardware = true,
+            nowEpochMillis = now,
+        ).trip
+
+        val soon = paused(PreviewData.NOW)
+        val later = paused(PreviewData.NOW + 90_000L)
+        assertEquals(soon.stats.activeDurationMillis, later.stats.activeDurationMillis)
+        assertEquals(90_000L, later.totalDurationMillis!! - soon.totalDurationMillis!!)
+    }
+
+    @Test
+    fun `a saved trip reports its stored total time and does not grow afterwards`() {
+        val finished = PreviewData.dashboard(PreviewData.finished, savedTrip = PreviewData.savedTrip).trip
+        assertEquals(PreviewData.savedTrip.totalDurationMillis, finished.totalDurationMillis)
+        assertEquals(2_592_000L, finished.totalDurationMillis)
+    }
+
+    @Test
+    fun `there is no total time without a trip, or for a finished trip that was not saved`() {
+        assertNull(PreviewData.dashboard(PreviewData.idleStationary).trip.totalDurationMillis)
+        assertNull(PreviewData.dashboard(PreviewData.finished).trip.totalDurationMillis)
     }
 
     @Test
