@@ -11,6 +11,7 @@ import app.wayneedle.domain.SettingsRepository
 import app.wayneedle.domain.TimeSource
 import app.wayneedle.domain.TrackingController
 import app.wayneedle.domain.TripRepository
+import app.wayneedle.domain.model.AppSettings
 import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TrackingState
@@ -18,6 +19,7 @@ import app.wayneedle.domain.model.Trip
 import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.ui.STOP_TIMEOUT_MILLIS
 import app.wayneedle.ui.speedometer.GaugeScale
+import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.speedReading
 import app.wayneedle.ui.wayneedleApplication
 import kotlinx.coroutines.CancellationException
@@ -25,9 +27,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,7 +79,7 @@ class DashboardViewModel(
 
     private data class Inputs(
         val state: TrackingState,
-        val unit: SpeedUnit,
+        val settings: AppSettings,
         val local: Local,
         val nowEpochMillis: Long,
         val finished: FinishedTrip,
@@ -95,6 +99,12 @@ class DashboardViewModel(
 
     /** Elapsed-realtime nanos of the last phase change requested here, for the double-tap guard. */
     private var lastPhaseChangeNanos: Long? = null
+
+    private val speedAlert = SpeedAlertMonitor()
+    private val speedAlertEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** Emits once each time the live speed crosses above the alert limit while this screen is shown. */
+    val speedAlerts: Flow<Unit> = speedAlertEvents.asSharedFlow()
 
     /**
      * Wall-clock readings for the total trip time. It ticks once a second while a trip is RUNNING or PAUSED:
@@ -135,22 +145,29 @@ class DashboardViewModel(
 
     val uiState: StateFlow<DashboardUiState> = combine(
         controller.state,
-        settingsRepository.settings.map { it.speedUnit }.distinctUntilChanged(),
+        settingsRepository.settings.distinctUntilChanged(),
         local,
         clock,
         finishedTrip,
-    ) { state, unit, local, now, finished -> Inputs(state, unit, local, now, finished) }
+    ) { state, settings, local, now, finished -> Inputs(state, settings, local, now, finished) }
         .map { inputs ->
-            gaugeScale = gaugeScale.extendedFor(inputs.unit, displayedSpeed(inputs.state, inputs.unit))
+            val unit = inputs.settings.speedUnit
+            gaugeScale = gaugeScale.extendedFor(unit, displayedSpeed(inputs.state, unit))
+            val liveMps = (inputs.state.liveSpeed as? LiveSpeed.Available)?.smoothedMps
+            if (speedAlert.update(liveMps, inputs.settings.speedAlertEnabled, inputs.settings.speedAlertMps)) {
+                speedAlertEvents.tryEmit(Unit)
+            }
             buildUiState(
                 state = inputs.state,
-                unit = inputs.unit,
+                unit = unit,
                 scale = gaugeScale,
                 dialog = inputs.local.dialog,
                 isFinishing = inputs.local.isFinishing,
                 savedTrip = inputs.savedTrip,
                 hasGpsHardware = hasGpsHardware,
                 nowEpochMillis = inputs.nowEpochMillis,
+                speedAlertLimitMps = inputs.settings.speedAlertMps.takeIf { inputs.settings.speedAlertEnabled },
+                overSpeedLimit = speedAlert.isOverLimit,
             )
         }
         .stateIn(
@@ -296,7 +313,10 @@ internal fun buildUiState(
     savedTrip: Trip?,
     hasGpsHardware: Boolean,
     nowEpochMillis: Long,
+    speedAlertLimitMps: Float? = null,
+    overSpeedLimit: Boolean = false,
 ): DashboardUiState {
+    val reading = speedReading(state.liveSpeed, unit, state.permission, state.gps, hasGpsHardware)
     val phase = state.trip.phase
     val saved = savedTrip?.takeIf { phase == TripPhase.FINISHED }
     val stats = saved?.stats ?: state.trip.stats
@@ -312,8 +332,10 @@ internal fun buildUiState(
     return DashboardUiState(
         unit = unit,
         gauge = GaugeUiState(
-            reading = speedReading(state.liveSpeed, unit, state.permission, state.gps, hasGpsHardware),
+            reading = reading,
             scale = scale,
+            limitInUnit = speedAlertLimitMps?.let { unit.fromMetersPerSecond(it.toDouble()).toFloat() },
+            overLimit = overSpeedLimit && reading is SpeedReading.Available,
         ),
         gps = state.gps,
         permission = state.permission,

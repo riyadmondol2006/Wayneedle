@@ -18,6 +18,9 @@ import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.SpeedUnavailableReason
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -199,6 +202,46 @@ class DashboardViewModelTest {
         assertTrue(vm.uiState.value.backgroundRecordingUnavailable)
         controller.update { PreviewData.idleStationary.copy(backgroundRecordingUnavailable = true) }
         assertFalse(vm.uiState.value.backgroundRecordingUnavailable)
+    }
+
+    // ---- speed alert -------------------------------------------------------------------------------------------------
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `crossing the speed alert limit vibrates once and colours the dial`() = runTest {
+        settings.setSpeedAlertEnabled(true)
+        settings.setSpeedAlertMps(25f)
+        val controller = FakeTrackingController(PreviewData.idleMoving) // 15 m/s
+        val vm = viewModel(controller)
+        val alerts = mutableListOf<Unit>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.speedAlerts.toList(alerts) }
+        keepActive(vm.uiState)
+        assertFalse(vm.uiState.value.gauge.overLimit)
+        assertEquals(90f, assertNotNull(vm.uiState.value.gauge.limitInUnit), 0.01f)
+
+        controller.update { it.copy(liveSpeed = PreviewData.live(27f)) }
+        controller.update { it.copy(liveSpeed = PreviewData.live(28f)) }
+        controller.update { it.copy(liveSpeed = PreviewData.live(26f)) }
+        assertTrue(vm.uiState.value.gauge.overLimit)
+        assertEquals(1, alerts.size, "one vibration per crossing")
+
+        controller.update { it.copy(liveSpeed = PreviewData.live(20f)) }
+        controller.update { it.copy(liveSpeed = PreviewData.live(27f)) }
+        assertEquals(2, alerts.size, "the next crossing alerts again")
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `no alert and no limit mark while the speed alert is off`() = runTest {
+        val controller = FakeTrackingController(PreviewData.idleMoving)
+        val vm = viewModel(controller)
+        val alerts = mutableListOf<Unit>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.speedAlerts.toList(alerts) }
+        keepActive(vm.uiState)
+        controller.update { it.copy(liveSpeed = PreviewData.live(60f)) }
+        assertFalse(vm.uiState.value.gauge.overLimit)
+        assertNull(vm.uiState.value.gauge.limitInUnit)
+        assertTrue(alerts.isEmpty())
     }
 
     // ---- total time ---------------------------------------------------------------------------------------------

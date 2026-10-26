@@ -58,6 +58,16 @@ class DataStoreSettingsRepository(private val dataStore: DataStore<Preferences>)
         write { it[SettingsKeys.KeepScreenOn] = enabled }
     }
 
+    override suspend fun setSpeedAlertEnabled(enabled: Boolean) {
+        write { it[SettingsKeys.SpeedAlertEnabled] = enabled }
+    }
+
+    override suspend fun setSpeedAlertMps(limitMps: Float) {
+        if (!limitMps.isFinite()) return
+        val clamped = limitMps.coerceIn(AppSettings.MIN_SPEED_ALERT_MPS, AppSettings.MAX_SPEED_ALERT_MPS)
+        write { it[SettingsKeys.SpeedAlertMps] = clamped }
+    }
+
     private suspend fun write(transform: suspend (MutablePreferences) -> Unit) {
         try {
             dataStore.edit(transform)
@@ -80,6 +90,10 @@ private fun Preferences.toAppSettings(): AppSettings {
         themeMode = enumOrDefault(SettingsKeys.ThemeMode, defaults.themeMode),
         dynamicColor = readOrNull(SettingsKeys.DynamicColor) ?: defaults.dynamicColor,
         keepScreenOn = readOrNull(SettingsKeys.KeepScreenOn) ?: defaults.keepScreenOn,
+        speedAlertEnabled = readOrNull(SettingsKeys.SpeedAlertEnabled) ?: defaults.speedAlertEnabled,
+        speedAlertMps = readOrNull(SettingsKeys.SpeedAlertMps)
+            ?.takeIf { it.isFinite() && it in AppSettings.MIN_SPEED_ALERT_MPS..AppSettings.MAX_SPEED_ALERT_MPS }
+            ?: defaults.speedAlertMps,
     )
 }
 

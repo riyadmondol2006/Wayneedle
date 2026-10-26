@@ -152,6 +152,15 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
     override suspend fun setDynamicColor(enabled: Boolean) = current.update { it.copy(dynamicColor = enabled) }
 
     override suspend fun setKeepScreenOn(enabled: Boolean) = current.update { it.copy(keepScreenOn = enabled) }
+
+    override suspend fun setSpeedAlertEnabled(enabled: Boolean) =
+        current.update { it.copy(speedAlertEnabled = enabled) }
+
+    override suspend fun setSpeedAlertMps(limitMps: Float) {
+        if (!limitMps.isFinite()) return
+        val clamped = limitMps.coerceIn(AppSettings.MIN_SPEED_ALERT_MPS, AppSettings.MAX_SPEED_ALERT_MPS)
+        current.update { it.copy(speedAlertMps = clamped) }
+    }
 }
 
 /** An in-memory [TripRepository] that keeps trips newest first, like the real one. */

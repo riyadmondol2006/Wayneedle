@@ -1,6 +1,7 @@
 package app.wayneedle.data.settings
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 /**
@@ -13,4 +14,6 @@ internal object SettingsKeys {
     val ThemeMode = stringPreferencesKey("theme_mode")
     val DynamicColor = booleanPreferencesKey("dynamic_color")
     val KeepScreenOn = booleanPreferencesKey("keep_screen_on")
+    val SpeedAlertEnabled = booleanPreferencesKey("speed_alert_enabled")
+    val SpeedAlertMps = floatPreferencesKey("speed_alert_mps")
 }

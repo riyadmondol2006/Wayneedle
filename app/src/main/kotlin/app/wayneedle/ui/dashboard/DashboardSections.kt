@@ -104,6 +104,8 @@ internal fun DashboardGauge(
         modifier = modifier,
         status = rememberGaugeStatus(gauge.reading, phase, awaitingFix),
         muted = phase == TripPhase.PAUSED,
+        limitInUnit = gauge.limitInUnit,
+        overLimit = gauge.overLimit,
     )
 }
 

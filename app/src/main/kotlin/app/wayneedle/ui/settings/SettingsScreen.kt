@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -26,9 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -42,8 +47,11 @@ import app.wayneedle.ui.components.DeleteFailedDialog
 import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonStyle
 import app.wayneedle.ui.components.TitleScaffold
+import app.wayneedle.ui.format.rememberUiFormatter
+import app.wayneedle.ui.format.speedLabelRes
 import app.wayneedle.ui.icons.WayneedleIcons
 import app.wayneedle.ui.theme.DynamicColorSupported
+import app.wayneedle.ui.theme.tabular
 
 @Composable
 fun SettingsRoute(modifier: Modifier = Modifier) {
@@ -56,6 +64,8 @@ fun SettingsRoute(modifier: Modifier = Modifier) {
             onThemeMode = viewModel::setThemeMode,
             onDynamicColor = viewModel::setDynamicColor,
             onKeepScreenOn = viewModel::setKeepScreenOn,
+            onSpeedAlertEnabled = viewModel::setSpeedAlertEnabled,
+            onStepSpeedAlertLimit = viewModel::stepSpeedAlertLimit,
             onRequestDeleteAll = viewModel::requestDeleteAll,
             onConfirmDeleteAll = viewModel::confirmDeleteAll,
             onCancelDeleteAll = viewModel::cancelDeleteAll,
@@ -72,6 +82,8 @@ class SettingsCallbacks(
     val onThemeMode: (ThemeMode) -> Unit = {},
     val onDynamicColor: (Boolean) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
+    val onSpeedAlertEnabled: (Boolean) -> Unit = {},
+    val onStepSpeedAlertLimit: (Int) -> Unit = {},
     val onRequestDeleteAll: () -> Unit = {},
     val onConfirmDeleteAll: () -> Unit = {},
     val onCancelDeleteAll: () -> Unit = {},
@@ -97,6 +109,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 UnitsSection(state.settings.speedUnit, callbacks.onSpeedUnit)
+                SpeedAlertSection(state.settings, callbacks)
                 AppearanceSection(state.settings, dynamicColorSupported, callbacks)
                 DisplaySection(state.settings.keepScreenOn, callbacks.onKeepScreenOn)
                 DataSection(state.tripCount, callbacks.onRequestDeleteAll)
@@ -158,6 +171,53 @@ private fun UnitsSection(selected: SpeedUnit, onSelect: (SpeedUnit) -> Unit) {
             selected = selected,
             onSelect = onSelect,
         )
+    }
+}
+
+@Composable
+private fun SpeedAlertSection(settings: AppSettings, callbacks: SettingsCallbacks) {
+    SettingsSection(stringResource(R.string.settings_speed_alert)) {
+        SwitchRow(
+            title = stringResource(R.string.settings_speed_alert_switch),
+            subtitle = stringResource(R.string.settings_speed_alert_summary),
+            checked = settings.speedAlertEnabled,
+            enabled = true,
+            onCheckedChange = callbacks.onSpeedAlertEnabled,
+        )
+        val enabled = settings.speedAlertEnabled
+        val textColor = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        val value = speedAlertLimitInUnit(settings.speedAlertMps, settings.speedUnit)
+        val formatter = rememberUiFormatter()
+        val label = stringResource(
+            R.string.settings_speed_alert_value,
+            formatter.count(value),
+            stringResource(settings.speedUnit.speedLabelRes),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_speed_alert_limit),
+                style = MaterialTheme.typography.titleMedium,
+                color = textColor,
+                modifier = Modifier.weight(1f),
+            )
+            FilledTonalIconButton(onClick = { callbacks.onStepSpeedAlertLimit(-1) }, enabled = enabled) {
+                Icon(WayneedleIcons.Remove, contentDescription = stringResource(R.string.action_lower_limit))
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleLarge.tabular(),
+                color = textColor,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(min = 96.dp).semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            FilledTonalIconButton(onClick = { callbacks.onStepSpeedAlertLimit(1) }, enabled = enabled) {
+                Icon(WayneedleIcons.Add, contentDescription = stringResource(R.string.action_raise_limit))
+            }
+        }
     }
 }
 

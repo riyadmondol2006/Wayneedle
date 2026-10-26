@@ -1,9 +1,11 @@
 package app.wayneedle.ui.dashboard
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.wayneedle.domain.CommandResult
@@ -25,6 +27,10 @@ fun DashboardRoute(
         hasGpsHardware = state.hasGpsHardware,
         onPermissionResult = viewModel::refreshEnvironment,
     )
+    val context = LocalContext.current
+    LaunchedEffect(viewModel, context) {
+        viewModel.speedAlerts.collect { context.vibrateSpeedAlert() }
+    }
     val requestNotifications = rememberNotificationRequester()
     val notifications = rememberNotificationAccess()
     val actions = remember(viewModel, access, requestNotifications, notifications, onOpenTrip) {

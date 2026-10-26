@@ -138,6 +138,14 @@
     <string name="banner_background_unavailable">Android didn’t allow recording in the background, so this trip records only while Wayneedle is on screen. Pause and resume to try again.</string>
     <string name="banner_notifications_off">Notifications are off, so the recording notification and its Pause button are hidden.</string>
     <string name="action_turn_on">Turn on</string>
+    <string name="spoken_over_speed_limit">above your speed alert limit</string>
+    <string name="settings_speed_alert">Speed alert</string>
+    <string name="settings_speed_alert_switch">Warn me above a speed</string>
+    <string name="settings_speed_alert_summary">The speed turns red and the phone vibrates once each time you go faster than the limit. Works while Wayneedle is on screen.</string>
+    <string name="settings_speed_alert_limit">Limit</string>
+    <string name="settings_speed_alert_value">%1$s %2$s</string>
+    <string name="action_lower_limit">Lower the limit</string>
+    <string name="action_raise_limit">Raise the limit</string>
     <string name="gate_banner_permission">Precise location access is missing. Speed and distance are not being measured.</string>
 
     <!-- Dialogs -->

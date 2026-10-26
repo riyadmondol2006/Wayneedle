@@ -16,4 +16,9 @@ interface SettingsRepository {
     suspend fun setDynamicColor(enabled: Boolean)
 
     suspend fun setKeepScreenOn(enabled: Boolean)
+
+    suspend fun setSpeedAlertEnabled(enabled: Boolean)
+
+    /** Clamped to [AppSettings.MIN_SPEED_ALERT_MPS]..[AppSettings.MAX_SPEED_ALERT_MPS]; non-finite is ignored. */
+    suspend fun setSpeedAlertMps(limitMps: Float)
 }

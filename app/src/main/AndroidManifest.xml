@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Speed alert: one short vibration when the limit is crossed. A normal (install-time) permission. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".WayneedleApplication"

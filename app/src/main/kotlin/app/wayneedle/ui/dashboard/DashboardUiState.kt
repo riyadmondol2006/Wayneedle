@@ -18,10 +18,16 @@ enum class DashboardDialog {
     SaveFailed,
 }
 
+/**
+ * @property limitInUnit the speed alert limit in the display unit, drawn on the dial; null when the alert is off.
+ * @property overLimit the shown speed is above the alert limit (with hysteresis, see [SpeedAlertMonitor]).
+ */
 @Immutable
 data class GaugeUiState(
     val reading: SpeedReading,
     val scale: GaugeScale,
+    val limitInUnit: Float? = null,
+    val overLimit: Boolean = false,
 )
 
 /**

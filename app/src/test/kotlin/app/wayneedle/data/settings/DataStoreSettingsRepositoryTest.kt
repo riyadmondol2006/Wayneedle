@@ -89,6 +89,32 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun `the speed alert round-trips and nonsense limits are clamped or ignored`() = runTest {
+        val repository = repository()
+        repository.setSpeedAlertEnabled(true)
+        repository.setSpeedAlertMps(25f)
+        assertEquals(true, repository.settings.first().speedAlertEnabled)
+        assertEquals(25f, repository.settings.first().speedAlertMps)
+
+        repository.setSpeedAlertMps(Float.NaN)
+        assertEquals(25f, repository.settings.first().speedAlertMps, "NaN is ignored")
+        repository.setSpeedAlertMps(-3f)
+        assertEquals(AppSettings.MIN_SPEED_ALERT_MPS, repository.settings.first().speedAlertMps)
+        repository.setSpeedAlertMps(10_000f)
+        assertEquals(AppSettings.MAX_SPEED_ALERT_MPS, repository.settings.first().speedAlertMps)
+    }
+
+    @Test
+    fun `an out-of-range stored limit falls back to the default`() = runTest {
+        val dataStore = createSettingsDataStore(newScope(), settingsFile())
+        dataStore.edit { it[SettingsKeys.SpeedAlertMps] = 9_999f }
+        assertEquals(
+            AppSettings.DEFAULT_SPEED_ALERT_MPS,
+            DataStoreSettingsRepository(dataStore).settings.first().speedAlertMps,
+        )
+    }
+
+    @Test
     fun `every enum value round-trips`() = runTest {
         val repository = repository()
 

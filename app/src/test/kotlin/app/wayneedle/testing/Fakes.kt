@@ -209,6 +209,10 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
     override suspend fun setDynamicColor(enabled: Boolean) = state.update { it.copy(dynamicColor = enabled) }
 
     override suspend fun setKeepScreenOn(enabled: Boolean) = state.update { it.copy(keepScreenOn = enabled) }
+
+    override suspend fun setSpeedAlertEnabled(enabled: Boolean) = state.update { it.copy(speedAlertEnabled = enabled) }
+
+    override suspend fun setSpeedAlertMps(limitMps: Float) = state.update { it.copy(speedAlertMps = limitMps) }
 }
 
 /**

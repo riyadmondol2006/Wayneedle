@@ -125,6 +125,8 @@ data class GaugeStatus(
  * are not announced: only [status] is a polite live region and it changes on state transitions only.
  *
  * @param muted draws the progress arc and needle dimmed (e.g. while a trip is paused).
+ * @param limitInUnit the speed alert limit, marked on the dial; null when the alert is off.
+ * @param overLimit the speed is above the alert limit: arc, needle and digits switch to the error colour.
  */
 @Composable
 fun Speedometer(
@@ -133,6 +135,8 @@ fun Speedometer(
     modifier: Modifier = Modifier,
     status: GaugeStatus? = null,
     muted: Boolean = false,
+    limitInUnit: Float? = null,
+    overLimit: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val formatter = rememberUiFormatter()
@@ -145,14 +149,17 @@ fun Speedometer(
     LaunchedEffect(targetFraction) { needle.animateTo(targetFraction, spec) }
 
     val gaugeLabel = stringResource(R.string.speedometer_label)
+    val alerting = overLimit && available
+    val overLimitText = stringResource(R.string.spoken_over_speed_limit)
     val spokenState = when (reading) {
         is SpeedReading.Available -> {
             val rounded = reading.valueInUnit.roundToInt()
-            pluralStringResource(
+            val speed = pluralStringResource(
                 scale.unit.speedSpokenRes,
                 rounded,
                 formatter.speedInUnit(reading.valueInUnit.toDouble()),
             )
+            if (alerting) "$speed, $overLimitText" else speed
         }
 
         is SpeedReading.Unavailable -> stringResource(
@@ -167,8 +174,12 @@ fun Speedometer(
     val majorTickColor = colors.onSurface
     val minorTickColor = colors.outline
     val labelColor = colors.onSurfaceVariant
-    val arcColor = colors.primary
-    val needleColor = colors.primary
+    val arcColor = if (alerting) colors.error else colors.primary
+    val needleColor = if (alerting) colors.error else colors.primary
+    val limitColor = colors.error
+    val limitFraction = limitInUnit
+        ?.takeIf { it.isFinite() && it > 0f && it <= scale.max }
+        ?.let { scale.fractionOf(it) }
     val needleHalo = colors.surface
     val fontScale = density.fontScale
 
@@ -198,6 +209,7 @@ fun Speedometer(
                         },
                 )
                 Canvas(Modifier.fillMaxSize()) {
+                    if (limitFraction != null) drawLimitMark(limitFraction, limitColor)
                     drawNeedleLayer(
                         fraction = needle.value,
                         scale = scale,
@@ -219,6 +231,7 @@ fun Speedometer(
                     unitLabel = stringResource(scale.unit.speedLabelRes),
                     dialWidth = width,
                     muted = muted,
+                    alerting = alerting,
                     formatter = formatter,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -253,6 +266,7 @@ private fun SpeedReadout(
     unitLabel: String,
     dialWidth: Dp,
     muted: Boolean,
+    alerting: Boolean,
     formatter: UiFormatter,
     modifier: Modifier = Modifier,
 ) {
@@ -272,10 +286,10 @@ private fun SpeedReadout(
                 Text(
                     text = formatter.speedInUnit(reading.valueInUnit.toDouble()),
                     style = digitsStyle,
-                    color = if (muted) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
+                    color = when {
+                        alerting -> MaterialTheme.colorScheme.error
+                        muted -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> MaterialTheme.colorScheme.onSurface
                     },
                     maxLines = 1,
                     softWrap = false,
@@ -428,6 +442,22 @@ private fun DrawScope.drawScale(
             ),
         )
     }
+}
+
+/** A short bar across the track at the speed alert limit. */
+private fun DrawScope.drawLimitMark(fraction: Float, color: Color) {
+    val w = size.width
+    val arcStroke = w * ARC_STROKE
+    val outer = w * OUTER_RADIUS + w * 0.01f
+    val inner = w * OUTER_RADIUS - arcStroke - w * 0.01f
+    val angle = Math.toRadians((START_ANGLE + SWEEP_ANGLE * fraction).toDouble())
+    drawLine(
+        color = color,
+        start = pointOnDial(angle, outer),
+        end = pointOnDial(angle, inner),
+        strokeWidth = w * 0.012f,
+        cap = StrokeCap.Round,
+    )
 }
 
 /** Re-draws the ticks the needle has passed in the accent colour, so the scale lights up behind the needle. */

@@ -67,6 +67,17 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setKeepScreenOn(enabled) }
     }
 
+    fun setSpeedAlertEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSpeedAlertEnabled(enabled) }
+    }
+
+    /** Moves the alert limit by [steps] of [SPEED_ALERT_STEP] in the user's unit. */
+    fun stepSpeedAlertLimit(steps: Int) {
+        val settings = uiState.value.settings
+        val next = steppedSpeedAlertLimit(settings.speedAlertMps, settings.speedUnit, steps)
+        viewModelScope.launch { settingsRepository.setSpeedAlertMps(next) }
+    }
+
     fun requestDeleteAll() = confirmingDeleteAll.update { true }
 
     fun cancelDeleteAll() = confirmingDeleteAll.update { false }

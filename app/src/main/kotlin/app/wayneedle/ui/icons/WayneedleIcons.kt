@@ -53,6 +53,10 @@ object WayneedleIcons {
 
     val Check: ImageVector by lazy { icon("Check", "M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z") }
 
+    val Remove: ImageVector by lazy { icon("Remove", "M19,13H5v-2h14v2z") }
+
+    val Add: ImageVector by lazy { icon("Add", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z") }
+
     val Warning: ImageVector by lazy { icon("Warning", "M1,21h22L12,2 1,21zM13,18h-2v-2h2v2zM13,14h-2v-4h2v4z") }
 
     val LocationOff: ImageVector by lazy {

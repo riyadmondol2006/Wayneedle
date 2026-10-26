@@ -18,6 +18,12 @@ enum class SpeedUnit {
         MPH -> metersPerSecond * MPS_TO_MPH
     }
 
+    /** Converts a speed in this unit (km/h or mph) into metres/second. */
+    fun toMetersPerSecond(valueInUnit: Double): Double = when (this) {
+        KMH -> valueInUnit / MPS_TO_KMH
+        MPH -> valueInUnit / MPS_TO_MPH
+    }
+
     /** Converts metres into this unit's distance (km or mi). */
     fun fromMeters(meters: Double): Double = when (this) {
         KMH -> meters / METERS_PER_KILOMETER
