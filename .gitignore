@@ -16,6 +16,7 @@ captures/
 # Signing material must never be committed
 *.keystore
 *.jks
+*.jks.base64
 *.p12
 keystore.properties
 signing.properties
