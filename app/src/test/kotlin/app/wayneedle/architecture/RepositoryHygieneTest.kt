@@ -10,14 +10,19 @@ class RepositoryHygieneTest {
     private val catalogPath: String by lazy { ProjectLayout.relativePath(ProjectLayout.versionCatalog) }
 
     @Test
-    fun `no manifest declares the INTERNET permission`() {
+    fun `only the main manifest declares INTERNET, for the update check`() {
         val sourceManifests = ProjectLayout.sourceManifests()
         assertTrue(sourceManifests.isNotEmpty(), "No AndroidManifest.xml found under app/src")
-        // Merged manifests exist only after a build; when present they also catch a permission added by a dependency.
-        val manifests = sourceManifests + ProjectLayout.mergedManifests()
+        val (main, others) = sourceManifests.partition { it.path.endsWith("src/main/AndroidManifest.xml") }
+        assertTrue(
+            main.single().text.contains("android.permission.INTERNET"),
+            "the update check needs INTERNET in the main manifest (see PRIVACY.md)",
+        )
+        // Test and build-type manifests must not widen it; what the network may be used for is confined to
+        // app.wayneedle.update (see ArchitectureTest).
         assertNoViolations(
-            rule = "Wayneedle is fully offline: no android.permission.INTERNET anywhere",
-            violations = manifests.flatMap(ArchitectureRules::checkNoInternetPermission),
+            rule = "android.permission.INTERNET only in src/main/AndroidManifest.xml",
+            violations = others.flatMap(ArchitectureRules::checkNoInternetPermission),
         )
     }
 

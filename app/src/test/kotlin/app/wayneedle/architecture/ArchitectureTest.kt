@@ -55,6 +55,14 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `only the update check uses the network`() {
+        assertNoViolations(
+            rule = "networking APIs only in app.wayneedle.update",
+            violations = ArchitectureRules.checkNetworkConfinement(mainSources),
+        )
+    }
+
+    @Test
     fun `main sources do not log coordinates`() {
         assertNoViolations(
             rule = "coordinates are never written to the system log (PRIVACY.md)",

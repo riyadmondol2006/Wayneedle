@@ -21,4 +21,6 @@ interface SettingsRepository {
 
     /** Clamped to [AppSettings.MIN_SPEED_ALERT_MPS]..[AppSettings.MAX_SPEED_ALERT_MPS]; non-finite is ignored. */
     suspend fun setSpeedAlertMps(limitMps: Float)
+
+    suspend fun setUpdateCheckEnabled(enabled: Boolean)
 }

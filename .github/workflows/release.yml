@@ -1,0 +1,105 @@
+name: Release
+
+# Every push to main builds, verifies, signs and publishes a stable GitHub Release.
+# The signing key comes from repository secrets; see docs/RELEASING.md for the one-time setup.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Releases are never cancelled half-way; a newer push waits for the running one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WAYNEEDLE_VERSION_CODE: ${{ github.run_number }}
+      WAYNEEDLE_VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the signing secrets are set
+        env:
+          KEYSTORE_BASE64: ${{ secrets.WAYNEEDLE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.WAYNEEDLE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.WAYNEEDLE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.WAYNEEDLE_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing WAYNEEDLE_KEYSTORE_BASE64"
+          [ -n "$KEYSTORE_PASSWORD" ] || missing="$missing WAYNEEDLE_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || missing="$missing WAYNEEDLE_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ] || missing="$missing WAYNEEDLE_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing (see docs/RELEASING.md)"
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+
+      - name: Accept Android SDK licences
+        run: yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      # Nothing is released unless the same checks as CI pass.
+      - name: Verify
+        run: ./gradlew --stacktrace testDebugUnitTest staticAnalysis
+
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.WAYNEEDLE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/wayneedle-release.jks"
+          echo "WAYNEEDLE_KEYSTORE_FILE=$RUNNER_TEMP/wayneedle-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build the signed release APK
+        env:
+          WAYNEEDLE_KEYSTORE_PASSWORD: ${{ secrets.WAYNEEDLE_KEYSTORE_PASSWORD }}
+          WAYNEEDLE_KEY_ALIAS: ${{ secrets.WAYNEEDLE_KEY_ALIAS }}
+          WAYNEEDLE_KEY_PASSWORD: ${{ secrets.WAYNEEDLE_KEY_PASSWORD }}
+        run: ./gradlew --stacktrace assembleRelease
+
+      - name: Check the signature and name the APK
+        run: |
+          apk=app/build/outputs/apk/release/app-release.apk
+          build_tools=$(ls -d "${ANDROID_HOME}"/build-tools/* | sort -V | tail -n 1)
+          "$build_tools/apksigner" verify --verbose --print-certs "$apk"
+          out="Wayneedle-${WAYNEEDLE_VERSION_NAME}.apk"
+          cp "$apk" "$out"
+          sha256sum "$out" > "$out.sha256"
+          echo "APK=$out" >> "$GITHUB_ENV"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/wayneedle-release.jks"
+
+      - name: Publish the stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${WAYNEEDLE_VERSION_NAME}"
+          gh release create "$tag" "$APK" "$APK.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Wayneedle ${WAYNEEDLE_VERSION_NAME}" \
+            --generate-notes \
+            --latest

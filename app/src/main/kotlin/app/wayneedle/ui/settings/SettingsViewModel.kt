@@ -12,6 +12,8 @@ import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.ThemeMode
 import app.wayneedle.ui.STOP_TIMEOUT_MILLIS
 import app.wayneedle.ui.appContainer
+import app.wayneedle.update.UpdateCheckResult
+import app.wayneedle.update.UpdateChecker
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,14 +34,26 @@ data class SettingsUiState(
     val confirmingDeleteAll: Boolean = false,
     /** "Delete all" did not go through (storage error); shown until acknowledged. */
     val deleteFailed: Boolean = false,
+    val manualUpdateCheck: ManualUpdateCheck = ManualUpdateCheck.Idle,
 )
+
+/** The state of "Check now" in Settings. */
+sealed interface ManualUpdateCheck {
+    data object Idle : ManualUpdateCheck
+
+    data object Checking : ManualUpdateCheck
+
+    data class Done(val result: UpdateCheckResult) : ManualUpdateCheck
+}
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val tripRepository: TripRepository,
+    private val updateChecker: UpdateChecker? = null,
 ) : ViewModel() {
     private val confirmingDeleteAll = MutableStateFlow(false)
     private val deleteFailed = MutableStateFlow(false)
+    private val manualUpdateCheck = MutableStateFlow<ManualUpdateCheck>(ManualUpdateCheck.Idle)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
@@ -47,8 +61,9 @@ class SettingsViewModel(
         tripRepository.observeTrips().map { it.size }.catch { emit(0) },
         confirmingDeleteAll,
         deleteFailed,
-    ) { settings, count, confirming, failed ->
-        SettingsUiState(settings, count, confirming, failed)
+        manualUpdateCheck,
+    ) { settings, count, confirming, failed, updateCheck ->
+        SettingsUiState(settings, count, confirming, failed, updateCheck)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsUiState())
 
     fun setSpeedUnit(unit: SpeedUnit) {
@@ -78,6 +93,20 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setSpeedAlertMps(next) }
     }
 
+    fun setUpdateCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setUpdateCheckEnabled(enabled) }
+    }
+
+    /** "Check now": always asks GitHub, whatever the daily schedule or a skipped version. */
+    fun checkForUpdatesNow() {
+        val checker = updateChecker ?: return
+        if (manualUpdateCheck.value == ManualUpdateCheck.Checking) return
+        manualUpdateCheck.value = ManualUpdateCheck.Checking
+        viewModelScope.launch { manualUpdateCheck.value = ManualUpdateCheck.Done(checker.checkNow()) }
+    }
+
+    fun dismissUpdateCheck() = manualUpdateCheck.update { ManualUpdateCheck.Idle }
+
     fun requestDeleteAll() = confirmingDeleteAll.update { true }
 
     fun cancelDeleteAll() = confirmingDeleteAll.update { false }
@@ -101,7 +130,7 @@ class SettingsViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val container = appContainer()
-                SettingsViewModel(container.settingsRepository, container.tripRepository)
+                SettingsViewModel(container.settingsRepository, container.tripRepository, container.updateChecker)
             }
         }
     }

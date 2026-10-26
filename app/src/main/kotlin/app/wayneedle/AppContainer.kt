@@ -11,6 +11,9 @@ import app.wayneedle.service.ServiceTripForegroundLauncher
 import app.wayneedle.tracking.TripTracker
 import app.wayneedle.tracking.platform.AndroidLocationSource
 import app.wayneedle.tracking.platform.SystemTimeSource
+import app.wayneedle.update.GitHubReleaseSource
+import app.wayneedle.update.PreferencesUpdateCheckMemory
+import app.wayneedle.update.UpdateChecker
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -22,6 +25,7 @@ interface AppContainer {
     val settingsRepository: SettingsRepository
     val tripRepository: TripRepository
     val trackingController: TrackingController
+    val updateChecker: UpdateChecker
 }
 
 /**
@@ -38,6 +42,15 @@ class DefaultAppContainer(context: Context, applicationScope: CoroutineScope) : 
     override val timeSource: TimeSource = SystemTimeSource
     override val settingsRepository: SettingsRepository get() = data.settingsRepository
     override val tripRepository: TripRepository get() = data.tripRepository
+
+    override val updateChecker: UpdateChecker by lazy {
+        UpdateChecker(
+            source = GitHubReleaseSource(userAgent = "Wayneedle/${BuildConfig.VERSION_NAME}"),
+            currentVersion = BuildConfig.VERSION_NAME,
+            memory = PreferencesUpdateCheckMemory(appContext),
+            nowEpochMillis = timeSource::epochMillis,
+        )
+    }
 
     override val trackingController: TrackingController by lazy {
         TripTracker(

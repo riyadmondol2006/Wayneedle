@@ -62,6 +62,10 @@ class DataStoreSettingsRepository(private val dataStore: DataStore<Preferences>)
         write { it[SettingsKeys.SpeedAlertEnabled] = enabled }
     }
 
+    override suspend fun setUpdateCheckEnabled(enabled: Boolean) {
+        write { it[SettingsKeys.UpdateCheckEnabled] = enabled }
+    }
+
     override suspend fun setSpeedAlertMps(limitMps: Float) {
         if (!limitMps.isFinite()) return
         val clamped = limitMps.coerceIn(AppSettings.MIN_SPEED_ALERT_MPS, AppSettings.MAX_SPEED_ALERT_MPS)
@@ -94,6 +98,7 @@ private fun Preferences.toAppSettings(): AppSettings {
         speedAlertMps = readOrNull(SettingsKeys.SpeedAlertMps)
             ?.takeIf { it.isFinite() && it in AppSettings.MIN_SPEED_ALERT_MPS..AppSettings.MAX_SPEED_ALERT_MPS }
             ?: defaults.speedAlertMps,
+        updateCheckEnabled = readOrNull(SettingsKeys.UpdateCheckEnabled) ?: defaults.updateCheckEnabled,
     )
 }
 

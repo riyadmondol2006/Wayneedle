@@ -10,6 +10,10 @@ import app.wayneedle.ui.preview.FakeSettingsRepository
 import app.wayneedle.ui.preview.FakeTrackingController
 import app.wayneedle.ui.preview.FakeTripRepository
 import app.wayneedle.ui.preview.PreviewData
+import app.wayneedle.update.ReleaseInfo
+import app.wayneedle.update.UpdateCheckMemory
+import app.wayneedle.update.UpdateCheckResult
+import app.wayneedle.update.UpdateChecker
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import java.io.IOException
@@ -105,5 +109,66 @@ class SettingsViewModelTest {
         val vm = SettingsViewModel(FakeSettingsRepository(), repository)
         keepActive(vm.uiState)
         assertEquals(0, vm.uiState.value.tripCount)
+    }
+
+    private class Memory : UpdateCheckMemory {
+        override var lastCheckEpochMillis = 0L
+        override var skippedVersion: String? = null
+    }
+
+    @Test
+    fun `check now reports an update, the latest version, or no connection`() = runTest {
+        val release = ReleaseInfo("1.0.9", "https://github.com/riyadmondol2006/Wayneedle/releases/tag/v1.0.9", "")
+        var answer: ReleaseInfo? = release
+        var offline = false
+        val checker = UpdateChecker(
+            source = {
+                if (offline) throw IOException("offline")
+                answer
+            },
+            currentVersion = "1.0.5",
+            memory = Memory(),
+            nowEpochMillis = { 0L },
+        )
+        val vm = SettingsViewModel(FakeSettingsRepository(), FakeTripRepository(), checker)
+        keepActive(vm.uiState)
+
+        vm.checkForUpdatesNow()
+        assertEquals(ManualUpdateCheck.Done(UpdateCheckResult.Available(release)), vm.uiState.value.manualUpdateCheck)
+        vm.dismissUpdateCheck()
+        assertEquals(ManualUpdateCheck.Idle, vm.uiState.value.manualUpdateCheck)
+
+        answer = null
+        vm.checkForUpdatesNow()
+        assertEquals(ManualUpdateCheck.Done(UpdateCheckResult.UpToDate), vm.uiState.value.manualUpdateCheck)
+
+        offline = true
+        vm.checkForUpdatesNow()
+        assertEquals(ManualUpdateCheck.Done(UpdateCheckResult.Failed), vm.uiState.value.manualUpdateCheck)
+    }
+
+    @Test
+    fun `the update check can be switched off`() = runTest {
+        val repository = FakeSettingsRepository()
+        val vm = SettingsViewModel(repository, FakeTripRepository())
+        keepActive(vm.uiState)
+        assertTrue(vm.uiState.value.settings.updateCheckEnabled, "on by default")
+        vm.setUpdateCheckEnabled(false)
+        assertFalse(vm.uiState.value.settings.updateCheckEnabled)
+    }
+
+    @Test
+    fun `the daily check pops up once, and skipping keeps it quiet`() = runTest {
+        val release = ReleaseInfo("2.0.0", "https://github.com/riyadmondol2006/Wayneedle/releases/tag/v2.0.0", "")
+        val memory = Memory()
+        val checker = UpdateChecker({ release }, "1.0.0", memory, nowEpochMillis = { 1_000L })
+        val vm = AppViewModel(FakeSettingsRepository(), FakeTrackingController(), FakeTimeSource(), checker)
+        vm.checkForUpdatesIfDue(enabled = false)
+        assertEquals(null, vm.availableUpdate.value, "switched off")
+        vm.checkForUpdatesIfDue(enabled = true)
+        assertEquals(release, vm.availableUpdate.value)
+        vm.skipUpdate()
+        assertEquals(null, vm.availableUpdate.value)
+        assertEquals("2.0.0", memory.skippedVersion)
     }
 }

@@ -47,11 +47,13 @@ import app.wayneedle.ui.components.DeleteFailedDialog
 import app.wayneedle.ui.components.ExpressiveButton
 import app.wayneedle.ui.components.ExpressiveButtonStyle
 import app.wayneedle.ui.components.TitleScaffold
+import app.wayneedle.ui.components.UpdateDialog
 import app.wayneedle.ui.format.rememberUiFormatter
 import app.wayneedle.ui.format.speedLabelRes
 import app.wayneedle.ui.icons.WayneedleIcons
 import app.wayneedle.ui.theme.DynamicColorSupported
 import app.wayneedle.ui.theme.tabular
+import app.wayneedle.update.UpdateCheckResult
 
 @Composable
 fun SettingsRoute(modifier: Modifier = Modifier) {
@@ -70,6 +72,9 @@ fun SettingsRoute(modifier: Modifier = Modifier) {
             onConfirmDeleteAll = viewModel::confirmDeleteAll,
             onCancelDeleteAll = viewModel::cancelDeleteAll,
             onDismissDeleteError = viewModel::dismissDeleteError,
+            onUpdateCheckEnabled = viewModel::setUpdateCheckEnabled,
+            onCheckForUpdatesNow = viewModel::checkForUpdatesNow,
+            onDismissUpdateCheck = viewModel::dismissUpdateCheck,
         ),
         dynamicColorSupported = DynamicColorSupported,
         versionName = BuildConfig.VERSION_NAME,
@@ -88,6 +93,9 @@ class SettingsCallbacks(
     val onConfirmDeleteAll: () -> Unit = {},
     val onCancelDeleteAll: () -> Unit = {},
     val onDismissDeleteError: () -> Unit = {},
+    val onUpdateCheckEnabled: (Boolean) -> Unit = {},
+    val onCheckForUpdatesNow: () -> Unit = {},
+    val onDismissUpdateCheck: () -> Unit = {},
 )
 
 @Composable
@@ -113,6 +121,7 @@ fun SettingsScreen(
                 AppearanceSection(state.settings, dynamicColorSupported, callbacks)
                 DisplaySection(state.settings.keepScreenOn, callbacks.onKeepScreenOn)
                 DataSection(state.tripCount, callbacks.onRequestDeleteAll)
+                UpdatesSection(state, versionName, callbacks)
                 AboutSection(versionName)
             }
         }
@@ -130,6 +139,50 @@ fun SettingsScreen(
         )
     }
     if (state.deleteFailed) DeleteFailedDialog(callbacks.onDismissDeleteError)
+    val updateResult = (state.manualUpdateCheck as? ManualUpdateCheck.Done)?.result
+    if (updateResult is UpdateCheckResult.Available) {
+        UpdateDialog(updateResult.release, onDismiss = callbacks.onDismissUpdateCheck)
+    }
+}
+
+@Composable
+private fun UpdatesSection(state: SettingsUiState, versionName: String, callbacks: SettingsCallbacks) {
+    SettingsSection(stringResource(R.string.settings_updates)) {
+        SwitchRow(
+            title = stringResource(R.string.settings_update_check),
+            subtitle = stringResource(R.string.settings_update_check_summary),
+            checked = state.settings.updateCheckEnabled,
+            enabled = true,
+            onCheckedChange = callbacks.onUpdateCheckEnabled,
+        )
+        val check = state.manualUpdateCheck
+        val status = when (check) {
+            ManualUpdateCheck.Idle -> null
+
+            ManualUpdateCheck.Checking -> stringResource(R.string.update_checking)
+
+            is ManualUpdateCheck.Done -> when (check.result) {
+                UpdateCheckResult.UpToDate -> stringResource(R.string.update_up_to_date, versionName)
+                UpdateCheckResult.Failed -> stringResource(R.string.update_failed)
+                is UpdateCheckResult.Available -> null
+            }
+        }
+        if (status != null) {
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        ExpressiveButton(
+            label = stringResource(R.string.action_check_now),
+            style = ExpressiveButtonStyle.TONAL,
+            onClick = callbacks.onCheckForUpdatesNow,
+            enabled = check != ManualUpdateCheck.Checking,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable

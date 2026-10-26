@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
+// Release builds on GitHub get their version and signing key from the environment (see docs/RELEASING.md).
+// Local builds keep the defaults below and stay unsigned in release.
+val ciVersionCode = providers.environmentVariable("WAYNEEDLE_VERSION_CODE").orNull?.toInt()
+val ciVersionName = providers.environmentVariable("WAYNEEDLE_VERSION_NAME").orNull
+val releaseKeystore = providers.environmentVariable("WAYNEEDLE_KEYSTORE_FILE").orNull
+
 android {
     namespace = "app.wayneedle"
     compileSdk {
@@ -17,9 +23,20 @@ android {
         applicationId = "app.wayneedle"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = ciVersionCode ?: 1
+        versionName = ciVersionName ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("WAYNEEDLE_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("WAYNEEDLE_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("WAYNEEDLE_KEY_PASSWORD").get()
+            }
+        }
     }
 
     buildTypes {
@@ -30,6 +47,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

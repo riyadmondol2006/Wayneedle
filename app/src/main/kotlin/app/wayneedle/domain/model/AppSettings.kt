@@ -17,6 +17,8 @@ data class AppSettings(
     val speedAlertEnabled: Boolean = false,
     /** The alert limit in m/s, unit-independent; the UI shows and edits it in the selected unit. */
     val speedAlertMps: Float = DEFAULT_SPEED_ALERT_MPS,
+    /** Once a day, ask GitHub whether a newer release exists and offer it. */
+    val updateCheckEnabled: Boolean = true,
 ) {
     companion object {
         val Default = AppSettings()

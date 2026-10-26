@@ -213,6 +213,10 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
     override suspend fun setSpeedAlertEnabled(enabled: Boolean) = state.update { it.copy(speedAlertEnabled = enabled) }
 
     override suspend fun setSpeedAlertMps(limitMps: Float) = state.update { it.copy(speedAlertMps = limitMps) }
+
+    override suspend fun setUpdateCheckEnabled(enabled: Boolean) = state.update {
+        it.copy(updateCheckEnabled = enabled)
+    }
 }
 
 /**

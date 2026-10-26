@@ -124,10 +124,41 @@ internal object ArchitectureRules {
     private val urlPattern = Regex("""https?://[^\s"'<>)\]]+""", RegexOption.IGNORE_CASE)
 
     /**
-     * URLs that may appear in main Kotlin sources. Empty on purpose: the app is offline and has no reason to
-     * embed an address. Add an entry (with a justification) only for a reviewed exception.
+     * URLs that may appear in main Kotlin sources: only the project's own GitHub repository, for the optional
+     * update check (`app.wayneedle.update`). Add an entry (with a justification) only for a reviewed exception.
      */
-    val allowedUrlPrefixes: List<String> = emptyList()
+    val allowedUrlPrefixes: List<String> = listOf(
+        "https://api.github.com/repos/riyadmondol2006/Wayneedle/releases/latest",
+        "https://github.com/riyadmondol2006/Wayneedle/",
+    )
+
+    // ---- network confinement -------------------------------------------------------------------------------
+
+    private val networkIdentifiers = listOf(
+        "HttpURLConnection",
+        "HttpsURLConnection",
+        "URLConnection",
+        "openConnection",
+        "Socket",
+        "SSLSocket",
+        "DatagramSocket",
+    )
+
+    /**
+     * The update check is the only network access: networking APIs may appear only in `app.wayneedle.update`,
+     * so no other code (tracking, trips, settings) can ever send anything.
+     */
+    fun checkNetworkConfinement(files: List<SourceFile>): List<Violation> =
+        files.filterNot { it.inPackage("$ROOT.update") }.flatMap { file ->
+            val reason = "only app.wayneedle.update (the update check) may use the network"
+            val packageUses = listOf("java.net", "javax.net", "okhttp3").flatMap { prefix ->
+                findReferences(file, prefix) { name -> "references `$name`; $reason" }
+            }
+            val identifierUses = networkIdentifiers.flatMap { identifier ->
+                findIdentifier(file, identifier) { "uses `$identifier`; $reason" }
+            }
+            (packageUses + identifierUses).distinctBy { it.line }
+        }
 
     fun checkHardCodedUrls(
         files: List<SourceFile>,

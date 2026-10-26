@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -37,6 +38,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.wayneedle.R
 import app.wayneedle.ui.components.NavigationItem
+import app.wayneedle.ui.components.UpdateDialog
 import app.wayneedle.ui.components.WayneedleNavigationBar
 import app.wayneedle.ui.components.WayneedleNavigationRail
 import app.wayneedle.ui.navigation.Destination
@@ -55,6 +57,7 @@ fun WayneedleApp() {
     val appViewModel: AppViewModel = viewModel(factory = AppViewModel.Factory)
     val settings by appViewModel.settings.collectAsStateWithLifecycle()
     val keepAwake by appViewModel.keepAwake.collectAsStateWithLifecycle()
+    val update by appViewModel.availableUpdate.collectAsStateWithLifecycle()
     val current = settings
     if (current == null) {
         // Settings load in a few milliseconds; hold a plain window-coloured frame instead of flashing defaults.
@@ -64,7 +67,11 @@ fun WayneedleApp() {
     WayneedleTheme(themeMode = current.themeMode, dynamicColor = current.dynamicColor) {
         SystemBarsEffect(darkTheme = current.themeMode.isDark())
         KeepScreenOnEffect(enabled = current.keepScreenOn && keepAwake)
+        LaunchedEffect(current.updateCheckEnabled) { appViewModel.checkForUpdatesIfDue(current.updateCheckEnabled) }
         WayneedleScaffold()
+        update?.let { release ->
+            UpdateDialog(release, onDismiss = appViewModel::dismissUpdate, onSkip = appViewModel::skipUpdate)
+        }
     }
 }
 
