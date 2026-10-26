@@ -138,7 +138,11 @@
     <string name="banner_background_unavailable">Android didn’t allow recording in the background, so this trip records only while Wayneedle is on screen. Pause and resume to try again.</string>
     <string name="banner_notifications_off">Notifications are off, so the recording notification and its Pause button are hidden.</string>
     <string name="action_turn_on">Turn on</string>
+    <string name="banner_battery_restricted">Battery use for Wayneedle is set to Restricted, so Android may stop recording when the screen is off.</string>
+    <string name="banner_battery_saver_gps">Battery Saver turns GPS off while the screen is off, so a trip stops measuring in your pocket.</string>
+    <string name="action_change">Change</string>
     <string name="spoken_over_speed_limit">above your speed alert limit</string>
+    <string name="status_over_speed_limit">Above %1$s %2$s</string>
     <string name="settings_speed_alert">Speed alert</string>
     <string name="settings_speed_alert_switch">Warn me above a speed</string>
     <string name="settings_speed_alert_summary">The speed turns red and the phone vibrates once each time you go faster than the limit. Works while Wayneedle is on screen.</string>

@@ -2,17 +2,23 @@ package app.wayneedle.ui.permission
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -190,4 +196,63 @@ fun rememberNotificationAccess(): NotificationAccess {
             },
         )
     }
+}
+
+/** Settings that would stop background recording, re-checked whenever the app returns, and how to fix them. */
+@Immutable
+class BackgroundAccess(
+    val risks: Set<BackgroundRisk>,
+    val openAppSettings: () -> Unit,
+    val openBatterySaverSettings: () -> Unit,
+)
+
+@Composable
+fun rememberBackgroundAccess(): BackgroundAccess {
+    val context = LocalContext.current
+    var risks by remember { mutableStateOf(emptySet<BackgroundRisk>()) }
+    LifecycleResumeEffect(Unit) {
+        risks = context.currentBackgroundRisks()
+        onPauseOrDispose { }
+    }
+    // Battery Saver can be switched from the quick settings while the app stays on screen.
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context, intent: Intent) {
+                risks = context.currentBackgroundRisks()
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    return remember(risks, context) {
+        BackgroundAccess(
+            risks = risks,
+            openAppSettings = {
+                context.startSettings(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    ),
+                )
+            },
+            openBatterySaverSettings = { context.startSettings(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) },
+        )
+    }
+}
+
+private fun Context.currentBackgroundRisks(): Set<BackgroundRisk> {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return emptySet()
+    val activityManager = getSystemService(ActivityManager::class.java)
+    val powerManager = getSystemService(PowerManager::class.java)
+    return backgroundRisks(
+        sdkInt = Build.VERSION.SDK_INT,
+        backgroundRestricted = activityManager?.isBackgroundRestricted == true,
+        powerSaveMode = powerManager?.isPowerSaveMode == true,
+        locationPowerSaveMode = powerManager?.locationPowerSaveMode ?: PowerManager.LOCATION_MODE_NO_CHANGE,
+    )
 }

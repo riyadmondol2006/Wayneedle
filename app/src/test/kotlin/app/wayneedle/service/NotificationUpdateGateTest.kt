@@ -98,8 +98,9 @@ class NotificationUpdateGateTest {
             gate.decide(content("p", TripPhase.PAUSED), nowMillis = 0L),
         )
         gate.onPosted(content("p", TripPhase.PAUSED), nowMillis = 0L)
-        // Back in RUNNING later: no longer suppressed.
-        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("r"), nowMillis = 2_000L))
+        // Back in RUNNING later: no longer suppressed (after the usual short settle of a phase change).
+        assertEquals(NotificationUpdateGate.Decision.PostAfter(250L), gate.decide(content("r"), nowMillis = 2_000L))
+        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(content("r"), nowMillis = 2_250L))
     }
 
     @Test
@@ -117,12 +118,28 @@ class NotificationUpdateGateTest {
     }
 
     @Test
-    fun `a phase change is shown at once, even inside the interval or with the screen off`() {
+    fun `a phase change is shown after a short settle, even inside the interval or with the screen off`() {
+        val gate = NotificationUpdateGate()
+        gate.onPosted(content("a"), nowMillis = 0L)
+        val paused = content("paused", TripPhase.PAUSED)
+        assertEquals(NotificationUpdateGate.Decision.PostAfter(250L), gate.decide(paused, 10_000L, screenOn = false))
+        assertEquals(NotificationUpdateGate.Decision.PostAfter(150L), gate.decide(paused, 10_100L, screenOn = false))
+        assertEquals(NotificationUpdateGate.Decision.PostNow, gate.decide(paused, 10_250L, screenOn = false))
+    }
+
+    @Test
+    fun `a phase change that is undone within the settle time posts nothing new`() {
         val gate = NotificationUpdateGate()
         gate.onPosted(content("a"), nowMillis = 0L)
         assertEquals(
-            NotificationUpdateGate.Decision.PostNow,
-            gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 100L, screenOn = false),
+            NotificationUpdateGate.Decision.PostAfter(250L),
+            gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 5_000L),
+        )
+        // Resumed again before the settle ended: back to the normal rules, and the settle starts over next time.
+        assertEquals(NotificationUpdateGate.Decision.Skip, gate.decide(content("a"), nowMillis = 5_100L))
+        assertEquals(
+            NotificationUpdateGate.Decision.PostAfter(250L),
+            gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 6_000L),
         )
     }
 
@@ -135,7 +152,7 @@ class NotificationUpdateGateTest {
         assertEquals(
             NotificationUpdateGate.Decision.PostNow,
             gate.decide(content("paused", TripPhase.PAUSED), nowMillis = 500L),
-            "the paused notification must still appear",
+            "the paused notification must still appear (a swipe forgets the last post, so no settle applies)",
         )
     }
 

@@ -116,6 +116,11 @@ internal class TrackingNotification(private val context: Context) {
         notificationManager.notify(TrackingNotificationIds.NOTIFICATION_ID, build(content))
     }
 
+    /** Removes the trip notification, including one posted just before the service left the foreground. */
+    fun cancel() {
+        notificationManager.cancel(TrackingNotificationIds.NOTIFICATION_ID)
+    }
+
     /** `PendingIntent.getService`, so no extra manifest receiver is needed. Explicit and immutable. */
     private fun servicePendingIntent(requestCode: Int, action: String): PendingIntent =
         PendingIntent.getService(context, requestCode, TrackingService.commandIntent(context, action), PENDING_FLAGS)

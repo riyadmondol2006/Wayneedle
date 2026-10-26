@@ -36,13 +36,17 @@ import app.wayneedle.ui.components.IconBadge
 import app.wayneedle.ui.components.MessageCard
 import app.wayneedle.ui.format.UiFormatter
 import app.wayneedle.ui.format.distanceLabelRes
+import app.wayneedle.ui.format.rememberUiFormatter
+import app.wayneedle.ui.format.speedLabelRes
 import app.wayneedle.ui.icons.WayneedleIcons
+import app.wayneedle.ui.permission.BackgroundRisk
 import app.wayneedle.ui.speedometer.GaugeStatus
 import app.wayneedle.ui.speedometer.GaugeStatusTone
 import app.wayneedle.ui.speedometer.GpsSignalIndicator
 import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.Speedometer
 import app.wayneedle.ui.theme.LocalExtraColors
+import kotlin.math.roundToInt
 
 private const val HEADER_STACK_FONT_SCALE = 1.3f
 private const val THREE_COLUMN_MAX_FONT_SCALE = 1.3f
@@ -102,17 +106,35 @@ internal fun DashboardGauge(
         reading = gauge.reading,
         scale = gauge.scale,
         modifier = modifier,
-        status = rememberGaugeStatus(gauge.reading, phase, awaitingFix),
+        status = rememberGaugeStatus(gauge, phase, awaitingFix),
         muted = phase == TripPhase.PAUSED,
         limitInUnit = gauge.limitInUnit,
         overLimit = gauge.overLimit,
     )
 }
 
-/** The short state label under the dial. Changes only when the trip or GPS state changes, never per second. */
+/**
+ * The short state label under the dial. Changes only when the trip, GPS or speed alert state changes, never per
+ * second. Going over the speed alert limit takes precedence: the colour change alone is too subtle in some themes.
+ */
 @Composable
-private fun rememberGaugeStatus(reading: SpeedReading, phase: TripPhase, awaitingFix: Boolean): GaugeStatus? {
+private fun rememberGaugeStatus(gauge: GaugeUiState, phase: TripPhase, awaitingFix: Boolean): GaugeStatus? {
+    val reading = gauge.reading
     val noSpeed = reading is SpeedReading.Unavailable
+    val limit = gauge.limitInUnit
+    if (gauge.overLimit && limit != null) {
+        val formatter = rememberUiFormatter()
+        return GaugeStatus(
+            label = stringResource(
+                R.string.status_over_speed_limit,
+                formatter.count(limit.roundToInt()),
+                stringResource(gauge.scale.unit.speedLabelRes),
+            ),
+            tone = GaugeStatusTone.ERROR,
+            icon = WayneedleIcons.Warning,
+            prominent = true,
+        )
+    }
     return when (phase) {
         TripPhase.PAUSED -> GaugeStatus(
             label = stringResource(R.string.status_paused),
@@ -174,6 +196,20 @@ internal fun DashboardPanel(
                 if (gate != LocationGate.Ready) GateBanner(gate, actions)
                 if (state.backgroundRecordingUnavailable) {
                     WarningBanner(stringResource(R.string.banner_background_unavailable))
+                }
+                if (BackgroundRisk.APP_BATTERY_RESTRICTED in state.backgroundRisks) {
+                    WarningBanner(
+                        message = stringResource(R.string.banner_battery_restricted),
+                        actionLabel = stringResource(R.string.action_change),
+                        onAction = actions.onOpenAppSettings,
+                    )
+                }
+                if (BackgroundRisk.BATTERY_SAVER_STOPS_GPS in state.backgroundRisks) {
+                    WarningBanner(
+                        message = stringResource(R.string.banner_battery_saver_gps),
+                        actionLabel = stringResource(R.string.action_change),
+                        onAction = actions.onOpenBatterySaverSettings,
+                    )
                 }
                 if (state.notificationsBlocked && state.isTripActive) {
                     WarningBanner(

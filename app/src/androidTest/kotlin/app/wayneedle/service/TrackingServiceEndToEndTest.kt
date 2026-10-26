@@ -117,6 +117,7 @@ class TrackingServiceEndToEndTest {
         // The notification becomes visible a moment before the service records that it is in the foreground.
         awaitCondition("the service reports being in the foreground") { TrackingServiceStatus.isInForeground }
         assertTrue("the notification is ongoing", recording.flags and Notification.FLAG_ONGOING_EVENT != 0)
+        assertFalse("Android accepted the foreground service", tracker.state.value.backgroundRecordingUnavailable)
         assertEquals("one action: Pause", 1, recording.actions.size)
 
         // 2. The user leaves the app: no activity any more, only the foreground service.
@@ -148,9 +149,10 @@ class TrackingServiceEndToEndTest {
         drive(steps = 3)
         assertEquals("nothing accrues while paused", frozen, tracker.state.value.trip.stats)
 
-        // 4. Resume from the notification.
+        // 4. Resume from the notification (the app is still closed: a background start Android must accept).
         pausedNotification.actions[0].actionIntent.send()
-        awaitState("resumed from the notification") { it.trip.phase == TripPhase.RUNNING }
+        val resumed = awaitState("resumed from the notification") { it.trip.phase == TripPhase.RUNNING }
+        assertFalse("resuming from the notification must not be refused", resumed.backgroundRecordingUnavailable)
         awaitNotification("recording again") {
             it.extras.getString(Notification.EXTRA_TITLE) == "Wayneedle – Recording"
         }

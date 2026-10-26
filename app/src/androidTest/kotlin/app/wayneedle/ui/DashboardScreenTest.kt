@@ -251,4 +251,22 @@ class DashboardScreenTest {
         show(PreviewData.dashboard(PreviewData.running), dark = true)
         rule.onNodeWithText(string(R.string.action_pause)).assertIsDisplayed()
     }
+
+    // ---- warnings and the speed alert -------------------------------------------------------------------------
+
+    @Test
+    fun goingOverTheSpeedAlertLimitShowsAnUnmistakableAlert() {
+        val base = PreviewData.dashboard(PreviewData.running) // 54 km/h
+        show(base.copy(gauge = base.gauge.copy(limitInUnit = 50f, overLimit = true)))
+        rule.onNodeWithText(string(R.string.status_over_speed_limit, "50", string(R.string.unit_speed_kmh)))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun activeTripWarnsWhenNotificationsAreOffAndWhenBackgroundRecordingIsRefused() {
+        val running = PreviewData.dashboard(PreviewData.running)
+        show(running.copy(notificationsBlocked = true, backgroundRecordingUnavailable = true))
+        rule.onNodeWithText(string(R.string.banner_notifications_off)).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(string(R.string.banner_background_unavailable)).performScrollTo().assertIsDisplayed()
+    }
 }

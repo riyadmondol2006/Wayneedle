@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.wayneedle.domain.CommandResult
+import app.wayneedle.ui.permission.rememberBackgroundAccess
 import app.wayneedle.ui.permission.rememberLocationAccess
 import app.wayneedle.ui.permission.rememberNotificationAccess
 import app.wayneedle.ui.permission.rememberNotificationRequester
@@ -33,7 +34,8 @@ fun DashboardRoute(
     }
     val requestNotifications = rememberNotificationRequester()
     val notifications = rememberNotificationAccess()
-    val actions = remember(viewModel, access, requestNotifications, notifications, onOpenTrip) {
+    val background = rememberBackgroundAccess()
+    val actions = remember(viewModel, access, requestNotifications, notifications, background, onOpenTrip) {
         DashboardActions(
             onStart = {
                 if (viewModel.startTrip() is CommandResult.Ok) requestNotifications()
@@ -51,10 +53,11 @@ fun DashboardRoute(
             onOpenAppSettings = access.openAppSettings,
             onOpenLocationSettings = access.openLocationSettings,
             onOpenNotificationSettings = notifications.openSettings,
+            onOpenBatterySaverSettings = background.openBatterySaverSettings,
         )
     }
     DashboardScreen(
-        state = state.copy(notificationsBlocked = notifications.blocked),
+        state = state.copy(notificationsBlocked = notifications.blocked, backgroundRisks = background.risks),
         gate = access.gate,
         actions = actions,
         modifier = modifier,

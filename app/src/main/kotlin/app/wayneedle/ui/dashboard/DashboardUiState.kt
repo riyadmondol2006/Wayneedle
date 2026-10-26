@@ -6,6 +6,7 @@ import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TripPhase
 import app.wayneedle.domain.model.TripStats
+import app.wayneedle.ui.permission.BackgroundRisk
 import app.wayneedle.ui.speedometer.GaugeScale
 import app.wayneedle.ui.speedometer.SpeedReading
 
@@ -64,6 +65,8 @@ data class DashboardUiState(
     val backgroundRecordingUnavailable: Boolean = false,
     /** Notifications are blocked, so the trip notification and its actions are hidden (set by the route). */
     val notificationsBlocked: Boolean = false,
+    /** Phone settings that would stop recording with the screen off (set by the route). */
+    val backgroundRisks: Set<BackgroundRisk> = emptySet(),
 ) {
     val isTripActive: Boolean get() = trip.phase == TripPhase.RUNNING || trip.phase == TripPhase.PAUSED
 }

@@ -161,6 +161,7 @@ class TrackingService : Service() {
         observeJob = null
         graceJob = null
         scope.cancel()
+        notifications.cancel()
         isForeground = false
         TrackingServiceStatus.setInForeground(false)
         super.onDestroy()
@@ -292,6 +293,8 @@ class TrackingService : Service() {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             isForeground = false
         }
+        // An update posted in the same instant can survive the removal above and outlive the trip.
+        notifications.cancel()
         TrackingServiceStatus.setInForeground(false)
         stopSelf(lastStartId)
     }
