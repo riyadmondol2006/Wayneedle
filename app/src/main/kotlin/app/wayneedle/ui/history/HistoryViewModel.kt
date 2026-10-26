@@ -46,7 +46,12 @@ data class HistoryUiState(
     /** The trip the user asked to delete and has not yet confirmed. */
     val pendingDelete: Trip? = null,
     val deleteFailed: Boolean = false,
+    /** Lifetime figures; null when there are no trips. */
+    val totals: HistoryTotals? = null,
 ) {
+    /** Every trip on screen, newest first. */
+    val allTrips: List<Trip> get() = days.flatMap { it.trips }
+
     val isEmpty: Boolean get() = !isLoading && !loadFailed && days.isEmpty()
 }
 
@@ -82,6 +87,7 @@ class HistoryViewModel(
             unit = unit,
             pendingDelete = trips?.firstOrNull { it.id == pendingId },
             deleteFailed = failed,
+            totals = trips?.let(::historyTotals),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), HistoryUiState())
 

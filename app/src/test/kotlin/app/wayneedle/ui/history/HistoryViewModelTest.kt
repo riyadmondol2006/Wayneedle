@@ -160,4 +160,18 @@ class HistoryViewModelTest {
         vm.dismissDeleteError()
         assertFalse(vm.uiState.value.deleteFailed)
     }
+
+    @Test
+    fun `lifetime totals follow the stored trips`() = runTest {
+        val repository = FakeTripRepository(PreviewData.trips)
+        val vm = HistoryViewModel(repository, settings, utc)
+        keepActive(vm.uiState)
+        val totals = vm.uiState.value.totals
+        assertEquals(PreviewData.trips.size, totals?.tripCount)
+        assertEquals(PreviewData.trips.sumOf { it.stats.distanceMeters }, totals?.distanceMeters ?: 0.0, 1e-6)
+        assertEquals(PreviewData.trips.size, vm.uiState.value.allTrips.size)
+
+        repository.deleteAllTrips()
+        assertNull(vm.uiState.value.totals, "no totals card and no export without trips")
+    }
 }

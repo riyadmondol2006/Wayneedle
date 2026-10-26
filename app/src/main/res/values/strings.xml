@@ -170,6 +170,15 @@
     <string name="summary_title">Trip saved</string>
 
     <!-- History and trip details -->
+    <string name="history_totals_title">All trips</string>
+    <string name="stat_trips">Trips</string>
+    <string name="action_export_trips">Export trips as CSV</string>
+    <plurals name="export_done">
+        <item quantity="one">Exported %1$d trip</item>
+        <item quantity="other">Exported %1$d trips</item>
+    </plurals>
+    <string name="export_failed_title">Couldn’t export</string>
+    <string name="export_failed_body">The file could not be written. Nothing was changed. Try again, or choose another place to save it.</string>
     <string name="history_empty_title">No trips yet</string>
     <string name="history_empty_body">Finish a trip and it will show up here. Everything stays on your phone.</string>
     <string name="history_trip_meta">%1$s · Top %2$s %4$s · Avg %3$s %4$s</string>
