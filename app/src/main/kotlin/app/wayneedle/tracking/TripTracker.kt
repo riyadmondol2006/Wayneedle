@@ -107,6 +107,10 @@ class TripTracker(
     private var latestFixNanos: Long? = null
     private var latestFixAccuracyM: Float? = null
     private var lastAcceptedFixNanos: Long? = null
+    private var latestSpeedAccuracyMps: Float? = null
+    private var latestAltitudeM: Double? = null
+    private var latestVerticalAccuracyM: Float? = null
+    private var latestBearingDeg: Float? = null
     private var liveSpeed: LiveSpeed = LiveSpeed.Unavailable
     private var uiVisible = false
     private var finishing = false
@@ -491,6 +495,10 @@ class TripTracker(
             is FixDecision.Accepted -> {
                 val fix = decision.fix
                 lastAcceptedFixNanos = fix.elapsedRealtimeNanos
+                latestSpeedAccuracyMps = sample.speedAccuracyMps?.takeIf { it.isFinite() && it >= 0f }
+                latestAltitudeM = fix.altitudeM
+                latestVerticalAccuracyM = fix.altitudeM?.let { fix.verticalAccuracyM }
+                latestBearingDeg = fix.bearingDeg
                 liveSpeed = LiveSpeed.Available(
                     smoothedMps = smoother.update(fix.speedMps, fix.elapsedRealtimeNanos),
                     rawMps = fix.speedMps,
@@ -516,6 +524,10 @@ class TripTracker(
         latestFixNanos = null
         latestFixAccuracyM = null
         lastAcceptedFixNanos = null
+        latestSpeedAccuracyMps = null
+        latestAltitudeM = null
+        latestVerticalAccuracyM = null
+        latestBearingDeg = null
         satellitesUsed = null
         satellitesInView = null
     }
@@ -555,10 +567,16 @@ class TripTracker(
                 lastFixAgeMillis = fixAgeMillis,
                 satellitesUsed = satellitesUsed,
                 satellitesInView = satellitesInView,
+                // Readings of the latest accepted fix, only while it is still the current speed.
+                speedAccuracyMps = latestSpeedAccuracyMps.takeIf { liveSpeed is LiveSpeed.Available },
+                altitudeM = latestAltitudeM.takeIf { liveSpeed is LiveSpeed.Available },
+                verticalAccuracyM = latestVerticalAccuracyM.takeIf { liveSpeed is LiveSpeed.Available },
+                bearingDeg = latestBearingDeg.takeIf { liveSpeed is LiveSpeed.Available },
             ),
             liveSpeed = liveSpeed,
             trip = engine.snapshot(now),
             backgroundRecordingUnavailable = backgroundRecordingUnavailable,
+            uiVisible = uiVisible,
         )
     }
 

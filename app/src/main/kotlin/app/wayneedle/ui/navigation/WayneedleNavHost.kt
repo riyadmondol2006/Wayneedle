@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import app.wayneedle.ui.dashboard.DashboardRoute
 import app.wayneedle.ui.history.HistoryRoute
+import app.wayneedle.ui.hud.HudRoute
 import app.wayneedle.ui.settings.SettingsRoute
 import app.wayneedle.ui.theme.WayneedleMotion
 import app.wayneedle.ui.tripdetail.TripDetailRoute
@@ -46,7 +47,13 @@ fun WayneedleNavHost(
         popEnterTransition = { enter() },
         popExitTransition = { popExit() },
     ) {
-        composable(Destination.Dashboard.route) { DashboardRoute(onOpenTrip = rememberOpenTrip(navController)) }
+        composable(Destination.Dashboard.route) {
+            DashboardRoute(
+                onOpenTrip = rememberOpenTrip(navController),
+                onOpenHud = dropUnlessResumed { navController.navigate(Destination.Hud.route) },
+            )
+        }
+        composable(Destination.Hud.route) { HudRoute(onExit = dropUnlessResumed { navController.popBackStack() }) }
         composable(Destination.History.route) { HistoryRoute(onOpenTrip = rememberOpenTrip(navController)) }
         composable(Destination.Settings.route) { SettingsRoute() }
         composable(

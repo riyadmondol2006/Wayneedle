@@ -18,6 +18,11 @@ enum class GpsSignalQuality {
  * @property lastFixAgeMillis age of the latest fix, or null before the first fix.
  * @property satellitesUsed satellites used in the latest fix, or null if unknown.
  * @property satellitesInView satellites currently visible, or null if unknown.
+ * @property speedAccuracyMps 68 % accuracy of the latest accepted fix's speed, or null if unknown.
+ * @property altitudeM altitude of the latest accepted fix (WGS-84 ellipsoid height), or null if unknown.
+ * @property verticalAccuracyM 68 % accuracy of [altitudeM], or null if unknown.
+ * @property bearingDeg course over ground while moving, degrees clockwise from true north; null when not
+ *   moving, not credible, or no current speed.
  */
 data class GpsStatus(
     val providerEnabled: Boolean = true,
@@ -26,6 +31,10 @@ data class GpsStatus(
     val lastFixAgeMillis: Long? = null,
     val satellitesUsed: Int? = null,
     val satellitesInView: Int? = null,
+    val speedAccuracyMps: Float? = null,
+    val altitudeM: Double? = null,
+    val verticalAccuracyM: Float? = null,
+    val bearingDeg: Float? = null,
 ) {
     companion object {
         val Initial = GpsStatus()

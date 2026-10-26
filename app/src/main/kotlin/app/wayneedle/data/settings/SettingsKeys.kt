@@ -17,4 +17,5 @@ internal object SettingsKeys {
     val SpeedAlertEnabled = booleanPreferencesKey("speed_alert_enabled")
     val SpeedAlertMps = floatPreferencesKey("speed_alert_mps")
     val UpdateCheckEnabled = booleanPreferencesKey("update_check_enabled")
+    val SpeedAlertSound = booleanPreferencesKey("speed_alert_sound")
 }

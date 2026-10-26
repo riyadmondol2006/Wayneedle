@@ -217,6 +217,8 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
     override suspend fun setUpdateCheckEnabled(enabled: Boolean) = state.update {
         it.copy(updateCheckEnabled = enabled)
     }
+
+    override suspend fun setSpeedAlertSound(enabled: Boolean) = state.update { it.copy(speedAlertSound = enabled) }
 }
 
 /**

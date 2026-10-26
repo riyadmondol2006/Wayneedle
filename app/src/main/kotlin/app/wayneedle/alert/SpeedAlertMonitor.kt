@@ -1,4 +1,4 @@
-package app.wayneedle.ui.dashboard
+package app.wayneedle.alert
 
 /**
  * Decides when the speed alert is on and when to vibrate.

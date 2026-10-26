@@ -67,6 +67,7 @@ fun SettingsRoute(modifier: Modifier = Modifier) {
             onDynamicColor = viewModel::setDynamicColor,
             onKeepScreenOn = viewModel::setKeepScreenOn,
             onSpeedAlertEnabled = viewModel::setSpeedAlertEnabled,
+            onSpeedAlertSound = viewModel::setSpeedAlertSound,
             onStepSpeedAlertLimit = viewModel::stepSpeedAlertLimit,
             onRequestDeleteAll = viewModel::requestDeleteAll,
             onConfirmDeleteAll = viewModel::confirmDeleteAll,
@@ -88,6 +89,7 @@ class SettingsCallbacks(
     val onDynamicColor: (Boolean) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
     val onSpeedAlertEnabled: (Boolean) -> Unit = {},
+    val onSpeedAlertSound: (Boolean) -> Unit = {},
     val onStepSpeedAlertLimit: (Int) -> Unit = {},
     val onRequestDeleteAll: () -> Unit = {},
     val onConfirmDeleteAll: () -> Unit = {},
@@ -271,6 +273,13 @@ private fun SpeedAlertSection(settings: AppSettings, callbacks: SettingsCallback
                 Icon(WayneedleIcons.Add, contentDescription = stringResource(R.string.action_raise_limit))
             }
         }
+        SwitchRow(
+            title = stringResource(R.string.settings_speed_alert_sound),
+            subtitle = stringResource(R.string.settings_speed_alert_sound_summary),
+            checked = settings.speedAlertSound && enabled,
+            enabled = enabled,
+            onCheckedChange = callbacks.onSpeedAlertSound,
+        )
     }
 }
 

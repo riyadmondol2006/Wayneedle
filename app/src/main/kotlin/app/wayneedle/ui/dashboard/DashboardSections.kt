@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +48,7 @@ import app.wayneedle.ui.icons.WayneedleIcons
 import app.wayneedle.ui.permission.BackgroundRisk
 import app.wayneedle.ui.speedometer.GaugeStatus
 import app.wayneedle.ui.speedometer.GaugeStatusTone
+import app.wayneedle.ui.speedometer.GpsDetailsDialog
 import app.wayneedle.ui.speedometer.GpsSignalIndicator
 import app.wayneedle.ui.speedometer.SpeedReading
 import app.wayneedle.ui.speedometer.Speedometer
@@ -57,12 +63,23 @@ private const val ONE_COLUMN_FONT_SCALE = 1.6f
 // ---- Header ----------------------------------------------------------------------------------------------------
 
 @Composable
-internal fun DashboardHeader(unit: SpeedUnit, gps: GpsStatus, modifier: Modifier = Modifier) {
+internal fun DashboardHeader(
+    unit: SpeedUnit,
+    gps: GpsStatus,
+    modifier: Modifier = Modifier,
+    onOpenHud: () -> Unit = {},
+) {
     val stacked = LocalDensity.current.fontScale >= HEADER_STACK_FONT_SCALE
+    var showDetails by rememberSaveable { mutableStateOf(false) }
     if (stacked) {
         Column(modifier.heightIn(min = 48.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Wordmark()
-            GpsSignalIndicator(gps, unit)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Wordmark(Modifier.weight(1f))
+                IconButton(onClick = onOpenHud) {
+                    Icon(WayneedleIcons.Hud, contentDescription = stringResource(R.string.action_hud))
+                }
+            }
+            GpsSignalIndicator(gps, unit, onClick = { showDetails = true })
         }
     } else {
         Row(
@@ -71,9 +88,13 @@ internal fun DashboardHeader(unit: SpeedUnit, gps: GpsStatus, modifier: Modifier
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(Modifier.weight(1f))
-            GpsSignalIndicator(gps, unit)
+            IconButton(onClick = onOpenHud) {
+                Icon(WayneedleIcons.Hud, contentDescription = stringResource(R.string.action_hud))
+            }
+            GpsSignalIndicator(gps, unit, onClick = { showDetails = true })
         }
     }
+    if (showDetails) GpsDetailsDialog(gps, unit, onDismiss = { showDetails = false })
 }
 
 @Composable
@@ -111,6 +132,7 @@ internal fun DashboardGauge(
         muted = phase == TripPhase.PAUSED,
         limitInUnit = gauge.limitInUnit,
         overLimit = gauge.overLimit,
+        headingDeg = gauge.headingDeg,
     )
 }
 

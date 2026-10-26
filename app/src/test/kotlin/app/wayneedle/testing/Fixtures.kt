@@ -16,6 +16,10 @@ fun aSample(
     speedAccuracyMps: Float? = 0.5f,
     elapsedRealtimeMillis: Long = 0L,
     epochMillis: Long = 1_700_000_000_000L + elapsedRealtimeMillis,
+    altitudeM: Double? = null,
+    verticalAccuracyM: Float? = null,
+    bearingDeg: Float? = null,
+    bearingAccuracyDeg: Float? = null,
 ): LocationSample = LocationSample(
     latitude = latitude,
     longitude = longitude,
@@ -24,6 +28,10 @@ fun aSample(
     speedAccuracyMps = speedAccuracyMps,
     elapsedRealtimeNanos = elapsedRealtimeMillis * NANOS_PER_MILLI,
     epochMillis = epochMillis,
+    altitudeM = altitudeM,
+    verticalAccuracyM = verticalAccuracyM,
+    bearingDeg = bearingDeg,
+    bearingAccuracyDeg = bearingAccuracyDeg,
 )
 
 /** Latitude after moving [meters] due north from [latitude] (positive = north). */

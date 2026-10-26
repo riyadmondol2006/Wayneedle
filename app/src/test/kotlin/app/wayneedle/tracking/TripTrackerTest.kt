@@ -11,6 +11,7 @@ import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TripPhase
+import app.wayneedle.testing.aSample
 import app.wayneedle.testing.latitudeAfterNorth
 import app.wayneedle.testing.longitudeAfterEast
 import kotlinx.coroutines.CompletableDeferred
@@ -641,5 +642,51 @@ class TripTrackerTest {
         assertEquals(expectedResumes, resumes.get(), "every resume matches exactly one earlier pause")
         assertEquals(1 + resumes.get(), h.foreground.calls.count { it == "start" })
         assertEquals(1, h.source.maxConcurrentCollectors)
+    }
+
+    @Test
+    fun `heading and altitude are shown while moving and disappear with the live speed`() = runTest {
+        val h = TrackerHarness(this)
+        h.showUi()
+        fun fixWith(speed: Float, bearing: Float?, bearingAccuracy: Float? = 5f) {
+            h.advance(1_000L)
+            h.latitude = latitudeAfterNorth(h.latitude, speed.toDouble())
+            h.send(
+                LocationSourceEvent.Fix(
+                    aSample(
+                        latitude = h.latitude,
+                        speedMps = speed,
+                        elapsedRealtimeMillis = h.time.nowMillis,
+                        altitudeM = 120.0,
+                        verticalAccuracyM = 4f,
+                        bearingDeg = bearing,
+                        bearingAccuracyDeg = bearingAccuracy,
+                    ),
+                ),
+            )
+        }
+        fixWith(speed = 10f, bearing = 47f)
+        assertEquals(47f, h.state.gps.bearingDeg)
+        assertEquals(120.0, h.state.gps.altitudeM)
+        assertEquals(4f, h.state.gps.verticalAccuracyM)
+        assertEquals(0.5f, h.state.gps.speedAccuracyMps)
+
+        fixWith(speed = 10f, bearing = 47f, bearingAccuracy = 90f)
+        assertNull(h.state.gps.bearingDeg, "a course this uncertain is not shown")
+        fixWith(speed = 0f, bearing = 200f)
+        assertNull(h.state.gps.bearingDeg, "standing still has no course")
+
+        h.advance(6_000L)
+        assertNull(h.state.gps.altitudeM, "no current fix, no altitude")
+    }
+
+    @Test
+    fun `the state says whether the app is on screen`() = runTest {
+        val h = TrackerHarness(this)
+        assertFalse(h.state.uiVisible)
+        h.showUi()
+        assertTrue(h.state.uiVisible)
+        h.tracker.setUiVisible(false)
+        assertFalse(h.state.uiVisible)
     }
 }

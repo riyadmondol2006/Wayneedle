@@ -64,6 +64,8 @@ import app.wayneedle.R
 import app.wayneedle.ui.components.NeedleLoadingIndicator
 import app.wayneedle.ui.format.PLACEHOLDER
 import app.wayneedle.ui.format.UiFormatter
+import app.wayneedle.ui.format.compassPointRes
+import app.wayneedle.ui.format.normalizedDegrees
 import app.wayneedle.ui.format.rememberUiFormatter
 import app.wayneedle.ui.format.speedLabelRes
 import app.wayneedle.ui.format.speedSpokenRes
@@ -127,6 +129,7 @@ data class GaugeStatus(
  * @param muted draws the progress arc and needle dimmed (e.g. while a trip is paused).
  * @param limitInUnit the speed alert limit, marked on the dial; null when the alert is off.
  * @param overLimit the speed is above the alert limit: arc, needle and digits switch to the error colour.
+ * @param headingDeg course over ground while moving, shown next to the unit; null hides it.
  */
 @Composable
 fun Speedometer(
@@ -137,6 +140,7 @@ fun Speedometer(
     muted: Boolean = false,
     limitInUnit: Float? = null,
     overLimit: Boolean = false,
+    headingDeg: Float? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val formatter = rememberUiFormatter()
@@ -159,7 +163,10 @@ fun Speedometer(
                 rounded,
                 formatter.speedInUnit(reading.valueInUnit.toDouble()),
             )
-            if (alerting) "$speed, $overLimitText" else speed
+            val heading = headingDeg?.let {
+                stringResource(R.string.spoken_heading, stringResource(compassPointRes(it)), normalizedDegrees(it))
+            }
+            listOfNotNull(speed, heading, overLimitText.takeIf { alerting }).joinToString(", ")
         }
 
         is SpeedReading.Unavailable -> stringResource(
@@ -232,6 +239,7 @@ fun Speedometer(
                     dialWidth = width,
                     muted = muted,
                     alerting = alerting,
+                    headingDeg = headingDeg.takeIf { available },
                     formatter = formatter,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -267,6 +275,7 @@ private fun SpeedReadout(
     dialWidth: Dp,
     muted: Boolean,
     alerting: Boolean,
+    headingDeg: Float?,
     formatter: UiFormatter,
     modifier: Modifier = Modifier,
 ) {
@@ -294,11 +303,25 @@ private fun SpeedReadout(
                     maxLines = 1,
                     softWrap = false,
                 )
-                Text(
-                    text = unitLabel,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = unitLabel,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (headingDeg != null) {
+                        Text(
+                            text = " · " + stringResource(
+                                R.string.heading_value,
+                                stringResource(compassPointRes(headingDeg)),
+                                formatter.count(normalizedDegrees(headingDeg)),
+                            ),
+                            style = MaterialTheme.typography.titleMedium.tabular(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
 
             is SpeedReading.Unavailable -> {

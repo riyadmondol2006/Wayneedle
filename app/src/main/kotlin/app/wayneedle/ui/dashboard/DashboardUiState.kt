@@ -1,6 +1,7 @@
 package app.wayneedle.ui.dashboard
 
 import androidx.compose.runtime.Immutable
+import app.wayneedle.alert.SpeedAlertMonitor
 import app.wayneedle.domain.model.GpsStatus
 import app.wayneedle.domain.model.LocationPermissionState
 import app.wayneedle.domain.model.SpeedUnit
@@ -22,6 +23,7 @@ enum class DashboardDialog {
 /**
  * @property limitInUnit the speed alert limit in the display unit, drawn on the dial; null when the alert is off.
  * @property overLimit the shown speed is above the alert limit (with hysteresis, see [SpeedAlertMonitor]).
+ * @property headingDeg course over ground while moving; null otherwise.
  */
 @Immutable
 data class GaugeUiState(
@@ -29,6 +31,7 @@ data class GaugeUiState(
     val scale: GaugeScale,
     val limitInUnit: Float? = null,
     val overLimit: Boolean = false,
+    val headingDeg: Float? = null,
 )
 
 /**

@@ -17,6 +17,8 @@ data class AppSettings(
     val speedAlertEnabled: Boolean = false,
     /** The alert limit in m/s, unit-independent; the UI shows and edits it in the selected unit. */
     val speedAlertMps: Float = DEFAULT_SPEED_ALERT_MPS,
+    /** Beep as well as vibrate when the speed alert fires (follows the phone's ring mode). */
+    val speedAlertSound: Boolean = false,
     /** Once a day, ask GitHub whether a newer release exists and offer it. */
     val updateCheckEnabled: Boolean = true,
 ) {

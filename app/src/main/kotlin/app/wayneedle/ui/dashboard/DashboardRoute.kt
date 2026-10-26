@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.wayneedle.alert.signalSpeedAlert
 import app.wayneedle.domain.CommandResult
 import app.wayneedle.ui.permission.rememberBackgroundAccess
 import app.wayneedle.ui.permission.rememberLocationAccess
@@ -19,6 +20,7 @@ import app.wayneedle.ui.permission.rememberNotificationRequester
 fun DashboardRoute(
     onOpenTrip: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenHud: () -> Unit = {},
 ) {
     val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -30,12 +32,12 @@ fun DashboardRoute(
     )
     val context = LocalContext.current
     LaunchedEffect(viewModel, context) {
-        viewModel.speedAlerts.collect { context.vibrateSpeedAlert() }
+        viewModel.speedAlerts.collect { sound -> context.signalSpeedAlert(sound) }
     }
     val requestNotifications = rememberNotificationRequester()
     val notifications = rememberNotificationAccess()
     val background = rememberBackgroundAccess()
-    val actions = remember(viewModel, access, requestNotifications, notifications, background, onOpenTrip) {
+    val actions = remember(viewModel, access, requestNotifications, notifications, background, onOpenTrip, onOpenHud) {
         DashboardActions(
             onStart = {
                 if (viewModel.startTrip() is CommandResult.Ok) requestNotifications()
@@ -54,6 +56,7 @@ fun DashboardRoute(
             onOpenLocationSettings = access.openLocationSettings,
             onOpenNotificationSettings = notifications.openSettings,
             onOpenBatterySaverSettings = background.openBatterySaverSettings,
+            onOpenHud = onOpenHud,
         )
     }
     DashboardScreen(

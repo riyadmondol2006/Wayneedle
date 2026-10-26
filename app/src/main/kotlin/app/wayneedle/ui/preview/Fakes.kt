@@ -159,6 +159,8 @@ class FakeSettingsRepository(initial: AppSettings = AppSettings.Default) : Setti
     override suspend fun setUpdateCheckEnabled(enabled: Boolean) =
         current.update { it.copy(updateCheckEnabled = enabled) }
 
+    override suspend fun setSpeedAlertSound(enabled: Boolean) = current.update { it.copy(speedAlertSound = enabled) }
+
     override suspend fun setSpeedAlertMps(limitMps: Float) {
         if (!limitMps.isFinite()) return
         val clamped = limitMps.coerceIn(AppSettings.MIN_SPEED_ALERT_MPS, AppSettings.MAX_SPEED_ALERT_MPS)

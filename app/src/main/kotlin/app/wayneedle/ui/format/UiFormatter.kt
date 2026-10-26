@@ -82,6 +82,13 @@ class UiFormatter(val locale: Locale = Locale.getDefault()) {
     fun elevation(meters: Double, unit: SpeedUnit): String =
         if (!meters.isFinite()) PLACEHOLDER else integerFormat.format(elevationInUnit(meters, unit))
 
+    /** A whole altitude in metres or feet, which unlike a climb may be negative (below the ellipsoid). */
+    fun elevationSigned(meters: Double, unit: SpeedUnit): String {
+        if (!meters.isFinite()) return PLACEHOLDER
+        val value = if (unit == SpeedUnit.MPH) meters * METERS_TO_FEET else meters
+        return integerFormat.format(value.roundToLong())
+    }
+
     /** The number [elevation] shows, for choosing the matching plural form. */
     fun elevationInUnit(meters: Double, unit: SpeedUnit): Long {
         if (!meters.isFinite()) return 0L

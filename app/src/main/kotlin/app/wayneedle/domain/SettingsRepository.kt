@@ -23,4 +23,6 @@ interface SettingsRepository {
     suspend fun setSpeedAlertMps(limitMps: Float)
 
     suspend fun setUpdateCheckEnabled(enabled: Boolean)
+
+    suspend fun setSpeedAlertSound(enabled: Boolean)
 }

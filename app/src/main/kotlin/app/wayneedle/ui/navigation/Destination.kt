@@ -19,6 +19,9 @@ sealed class Destination(val route: String) {
 
     data object Settings : Destination("settings")
 
+    /** Full-screen head-up display, opened from the dashboard. */
+    data object Hud : Destination("hud")
+
     data object TripDetail : Destination("trip/{$TRIP_ID_ARG}") {
         fun routeFor(tripId: String): String = "trip/$tripId"
     }

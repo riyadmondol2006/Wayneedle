@@ -55,6 +55,26 @@ object WayneedleIcons {
 
     val Remove: ImageVector by lazy { icon("Remove", "M19,13H5v-2h14v2z") }
 
+    val Hud: ImageVector by lazy {
+        icon("Hud", "M7,14H5v5h5v-2H7v-3zM5,10h2V7h3V5H5v5zM17,17h-3v2h5v-5h-2v3zM14,5v2h3v3h2V5h-5z")
+    }
+
+    val Flip: ImageVector by lazy {
+        icon(
+            "Flip",
+            "M15,21h2v-2h-2v2zM19,9h2V7h-2v2zM3,5v14c0,1.1 0.9,2 2,2h4v-2H5V5h4V3H5c-1.1,0 -2,0.9 -2,2zM19,3v2h2" +
+                "c0,-1.1 -0.9,-2 -2,-2zM11,23h2V1h-2v22zM19,17h2v-2h-2v2zM15,5h2V3h-2v2zM19,13h2v-2h-2v2zM19,21" +
+                "c1.1,0 2,-0.9 2,-2h-2v2z",
+        )
+    }
+
+    val Close: ImageVector by lazy {
+        icon(
+            "Close",
+            "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z",
+        )
+    }
+
     val Download: ImageVector by lazy { icon("Download", "M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z") }
 
     val Add: ImageVector by lazy { icon("Add", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z") }

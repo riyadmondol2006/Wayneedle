@@ -12,8 +12,12 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import app.wayneedle.WayneedleApplication
+import app.wayneedle.alert.SpeedAlertMonitor
+import app.wayneedle.alert.signalSpeedAlert
 import app.wayneedle.domain.SettingsRepository
 import app.wayneedle.domain.TrackingController
+import app.wayneedle.domain.model.AppSettings
+import app.wayneedle.domain.model.LiveSpeed
 import app.wayneedle.domain.model.SpeedUnit
 import app.wayneedle.domain.model.TripPhase
 import kotlinx.coroutines.CoroutineScope
@@ -230,6 +234,7 @@ class TrackingService : Service() {
         observeJob = scope.launch {
             launch { observeLifecycle(controller) }
             launch { observeContent(controller, dependencies.settings) }
+            launch { observeSpeedAlert(controller, dependencies.settings) }
         }
     }
 
@@ -257,6 +262,22 @@ class TrackingService : Service() {
             .filterNotNull()
             .distinctUntilChanged()
             .collectLatest { content -> postWhenAllowed(content) }
+    }
+
+    /**
+     * The speed alert during a trip while the app is not on screen (in a pocket, behind navigation): the same
+     * monitor as the dashboard's, fed all the time so its hysteresis is current, but signalling only while the
+     * dashboard is not shown (the dashboard signals then), so an alert is never given twice.
+     */
+    private suspend fun observeSpeedAlert(controller: TrackingController, settings: SettingsRepository) {
+        val monitor = SpeedAlertMonitor()
+        val alertSettings = settings.settings.catch { emit(AppSettings.Default) }
+        combine(controller.state, alertSettings) { state, current -> state to current }.collect { (state, current) ->
+            val live = (state.liveSpeed as? LiveSpeed.Available)?.smoothedMps
+            val recording = state.trip.phase == TripPhase.RUNNING
+            val fire = monitor.update(live, current.speedAlertEnabled && recording, current.speedAlertMps)
+            if (fire && !state.uiVisible) signalSpeedAlert(current.speedAlertSound)
+        }
     }
 
     /** Applies [NotificationUpdateGate]: skips unchanged content, delays to at most one update per second. */

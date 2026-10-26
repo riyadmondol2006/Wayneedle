@@ -86,6 +86,10 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setSpeedAlertEnabled(enabled) }
     }
 
+    fun setSpeedAlertSound(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSpeedAlertSound(enabled) }
+    }
+
     /** Moves the alert limit by [steps] of [SPEED_ALERT_STEP] in the user's unit. */
     fun stepSpeedAlertLimit(steps: Int) {
         val settings = uiState.value.settings

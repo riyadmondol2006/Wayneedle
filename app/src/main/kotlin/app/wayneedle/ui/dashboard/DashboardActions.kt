@@ -20,4 +20,5 @@ class DashboardActions(
     val onOpenLocationSettings: () -> Unit = {},
     val onOpenNotificationSettings: () -> Unit = {},
     val onOpenBatterySaverSettings: () -> Unit = {},
+    val onOpenHud: () -> Unit = {},
 )

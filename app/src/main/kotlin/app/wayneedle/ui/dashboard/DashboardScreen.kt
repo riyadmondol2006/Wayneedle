@@ -89,7 +89,7 @@ private fun CompactDashboard(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth())
+            DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth(), onOpenHud = actions.onOpenHud)
             DashboardGauge(state.gauge, state.trip.phase, state.trip.awaitingFix, Modifier.width(gaugeWidth))
             DashboardPanel(state, gate, actions, formatter, Modifier.fillMaxWidth())
         }
@@ -125,7 +125,7 @@ private fun WideDashboard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth())
+            DashboardHeader(state.unit, state.gps, Modifier.fillMaxWidth(), onOpenHud = actions.onOpenHud)
             DashboardGauge(state.gauge, state.trip.phase, state.trip.awaitingFix, Modifier.width(gaugeWidth))
         }
         Column(

@@ -213,7 +213,7 @@ class DashboardViewModelTest {
         settings.setSpeedAlertMps(25f)
         val controller = FakeTrackingController(PreviewData.idleMoving) // 15 m/s
         val vm = viewModel(controller)
-        val alerts = mutableListOf<Unit>()
+        val alerts = mutableListOf<Boolean>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.speedAlerts.toList(alerts) }
         keepActive(vm.uiState)
         assertFalse(vm.uiState.value.gauge.overLimit)
@@ -223,11 +223,12 @@ class DashboardViewModelTest {
         controller.update { it.copy(liveSpeed = PreviewData.live(28f)) }
         controller.update { it.copy(liveSpeed = PreviewData.live(26f)) }
         assertTrue(vm.uiState.value.gauge.overLimit)
-        assertEquals(1, alerts.size, "one vibration per crossing")
+        assertEquals(listOf(false), alerts, "one vibration per crossing, no beep by default")
 
+        settings.setSpeedAlertSound(true)
         controller.update { it.copy(liveSpeed = PreviewData.live(20f)) }
         controller.update { it.copy(liveSpeed = PreviewData.live(27f)) }
-        assertEquals(2, alerts.size, "the next crossing alerts again")
+        assertEquals(listOf(false, true), alerts, "the next crossing alerts again, now with a beep")
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -235,7 +236,7 @@ class DashboardViewModelTest {
     fun `no alert and no limit mark while the speed alert is off`() = runTest {
         val controller = FakeTrackingController(PreviewData.idleMoving)
         val vm = viewModel(controller)
-        val alerts = mutableListOf<Unit>()
+        val alerts = mutableListOf<Boolean>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.speedAlerts.toList(alerts) }
         keepActive(vm.uiState)
         controller.update { it.copy(liveSpeed = PreviewData.live(60f)) }

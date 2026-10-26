@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.wayneedle.alert.SpeedAlertMonitor
 import app.wayneedle.domain.CommandResult
 import app.wayneedle.domain.FinishResult
 import app.wayneedle.domain.SettingsRepository
@@ -101,10 +102,13 @@ class DashboardViewModel(
     private var lastPhaseChangeNanos: Long? = null
 
     private val speedAlert = SpeedAlertMonitor()
-    private val speedAlertEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val speedAlertEvents = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
 
-    /** Emits once each time the live speed crosses above the alert limit while this screen is shown. */
-    val speedAlerts: Flow<Unit> = speedAlertEvents.asSharedFlow()
+    /**
+     * Emits once each time the live speed crosses above the alert limit while this screen is shown; the value
+     * says whether to beep as well. In the background the foreground service alerts instead.
+     */
+    val speedAlerts: Flow<Boolean> = speedAlertEvents.asSharedFlow()
 
     /**
      * Wall-clock readings for the total trip time. It ticks once a second while a trip is RUNNING or PAUSED:
@@ -155,7 +159,7 @@ class DashboardViewModel(
             gaugeScale = gaugeScale.extendedFor(unit, displayedSpeed(inputs.state, unit))
             val liveMps = (inputs.state.liveSpeed as? LiveSpeed.Available)?.smoothedMps
             if (speedAlert.update(liveMps, inputs.settings.speedAlertEnabled, inputs.settings.speedAlertMps)) {
-                speedAlertEvents.tryEmit(Unit)
+                speedAlertEvents.tryEmit(inputs.settings.speedAlertSound)
             }
             buildUiState(
                 state = inputs.state,
@@ -336,6 +340,7 @@ internal fun buildUiState(
             scale = scale,
             limitInUnit = speedAlertLimitMps?.let { unit.fromMetersPerSecond(it.toDouble()).toFloat() },
             overLimit = overSpeedLimit && reading is SpeedReading.Available,
+            headingDeg = state.gps.bearingDeg.takeIf { reading is SpeedReading.Available },
         ),
         gps = state.gps,
         permission = state.permission,

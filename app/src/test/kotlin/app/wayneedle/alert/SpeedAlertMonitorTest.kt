@@ -1,4 +1,4 @@
-package app.wayneedle.ui.dashboard
+package app.wayneedle.alert
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

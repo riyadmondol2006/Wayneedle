@@ -62,6 +62,10 @@ class DataStoreSettingsRepository(private val dataStore: DataStore<Preferences>)
         write { it[SettingsKeys.SpeedAlertEnabled] = enabled }
     }
 
+    override suspend fun setSpeedAlertSound(enabled: Boolean) {
+        write { it[SettingsKeys.SpeedAlertSound] = enabled }
+    }
+
     override suspend fun setUpdateCheckEnabled(enabled: Boolean) {
         write { it[SettingsKeys.UpdateCheckEnabled] = enabled }
     }
@@ -99,6 +103,7 @@ private fun Preferences.toAppSettings(): AppSettings {
             ?.takeIf { it.isFinite() && it in AppSettings.MIN_SPEED_ALERT_MPS..AppSettings.MAX_SPEED_ALERT_MPS }
             ?: defaults.speedAlertMps,
         updateCheckEnabled = readOrNull(SettingsKeys.UpdateCheckEnabled) ?: defaults.updateCheckEnabled,
+        speedAlertSound = readOrNull(SettingsKeys.SpeedAlertSound) ?: defaults.speedAlertSound,
     )
 }
 
